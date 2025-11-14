@@ -1,6 +1,6 @@
 // src/App.tsx
 import { Box, AppBar, Toolbar, Typography, Drawer, List, ListItem, ListItemText, ListItemIcon, CssBaseline, ListItemButton } from '@mui/material';
-import { Home, ShoppingCart, Logout } from '@mui/icons-material';
+import { Home, ShoppingCart, Logout, ReceiptLong } from '@mui/icons-material';
 import { Routes, Route, Link, Outlet } from 'react-router-dom';
 import { ProductsPage } from './pages/ProductsPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -8,6 +8,8 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './contexts/AuthContext';
+import { OrdersPage } from './pages/OrdersPage';
+import { NewOrderPage } from './pages/NewOrderPage';
 
 const drawerWidth = 240;
 
@@ -54,6 +56,14 @@ function DashboardLayout() {
                 <ListItemText primary="Produtos" />
               </ListItemButton>
             </ListItem>
+            <ListItem key="Pedidos" disablePadding>
+              <ListItemButton component={Link} to="/orders">
+                <ListItemIcon>
+                  <ReceiptLong />
+                </ListItemIcon>
+                <ListItemText primary="Pedidos" />
+              </ListItemButton>
+            </ListItem>
           </List>
           
           {/* Lista de Ações (Sair) */}
@@ -86,7 +96,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} /> {/* 2. Adicione a rota */}
+      <Route path="/register" element={<RegisterPage />} />
       
       <Route 
         path="/" 
@@ -98,6 +108,8 @@ function App() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="products" element={<ProductsPage />} />
+        <Route path="orders" element={<OrdersPage />} />
+        <Route path="orders/new" element={<NewOrderPage />} />
       </Route>
     </Routes>
   );
