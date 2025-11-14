@@ -1,6 +1,6 @@
 // src/components/ProductModal.tsx
 import { Modal, Box, Typography, TextField, Button } from '@mui/material';
-import { useState, useEffect } from 'react'; // 1. IMPORTE o useEffect
+import { useState, useEffect } from 'react';
 import api from '../api';
 
 // Interface
@@ -24,21 +24,29 @@ const style = {
   p: 4,
 };
 
-// 2. ATUALIZE AS PROPS
+// Tipo para a prop do snackbar
+type SnackbarSetter = (state: {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error';
+} | null) => void;
+
+// Props
 interface ProductModalProps {
   open: boolean;
   handleClose: () => void;
   onSave: () => void;
-  productToEdit: Product | null; // Aceite o produto para editar
+  productToEdit: Product | null;
+  setSnackbar: SnackbarSetter; // Adicione esta prop
 }
 
-export function ProductModal({ open, handleClose, onSave, productToEdit }: ProductModalProps) {
+export function ProductModal({ open, handleClose, onSave, productToEdit, setSnackbar }: ProductModalProps) {
   // Estados do formulário
   const [name, setName] = useState('');
   const [price, setPrice] = useState(0);
   const [description, setDescription] = useState('');
 
-  // 3. USE O useEffect PARA PREENCHER O FORMULÁRIO
+  // UseEffect para preencher o formulário
   useEffect(() => {
     if (productToEdit) {
       // Se estamos editando, preencha os campos
@@ -53,7 +61,7 @@ export function ProductModal({ open, handleClose, onSave, productToEdit }: Produ
     }
   }, [productToEdit, open]); // Execute quando o modal abrir ou o produto mudar
 
-  // 4. ATUALIZE O handleSubmit
+  // HandleSubmit
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault(); 
 
@@ -74,15 +82,20 @@ export function ProductModal({ open, handleClose, onSave, productToEdit }: Produ
       
       onSave();     // Avise a página para recarregar
       handleClose();  // Feche o modal
+      // Mostra o snackbar de sucesso
+      setSnackbar({ open: true, message: 'Produto salvo com sucesso!', severity: 'success' });
+
     } catch (error) {
       console.error("Erro ao salvar produto:", error);
+      // Mostra o snackbar de erro
+      setSnackbar({ open: true, message: 'Erro ao salvar produto.', severity: 'error' });
     }
   };
 
   return (
     <Modal open={open} onClose={handleClose}>
       <Box sx={style}>
-        {/* 5. TÍTULO DINÂMICO */}
+        {/* TÍTULO DINÂMICO */}
         <Typography variant="h6" component="h2">
           {productToEdit ? 'Editar Produto' : 'Novo Produto'}
         </Typography>
