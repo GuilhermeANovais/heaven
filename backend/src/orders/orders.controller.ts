@@ -10,21 +10,21 @@ import {
   UseGuards,
   Request,
   ParseIntPipe,
-  Res, // 1. Importe o 'Res' (Resposta do Express)
+  Res,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { PdfService } from 'src/pdf/pdf.service'; // 2. Importe o PdfService
-import type { Response } from 'express'; // 3. Importe os tipos do Express
+import { PdfService } from 'src/pdf/pdf.service';
+import type { Response } from 'express';
 
 @UseGuards(JwtAuthGuard)
 @Controller('orders')
 export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,
-    private readonly pdfService: PdfService, // 4. Injete o PdfService
+    private readonly pdfService: PdfService,
   ) {}
 
   @Post()
@@ -38,28 +38,37 @@ export class OrdersController {
     return this.ordersService.findAll();
   }
 
-  // --- NOVO ENDPOINT DE PDF ---
+  // --- ENDPOINT DE PDF CORRIGIDO ---
   @Get(':id/pdf')
   async getOrderPdf(
     @Param('id', ParseIntPipe) id: number,
-    @Res() res: Response, // 5. Injete a resposta 'res'
+    @Res() res: Response,
   ) {
-    // Gere o HTML para o pedido
-    const html = await this.pdfService.generateOrderHtml(id);
-    // Converta o HTML para um buffer de PDF
+    // 1. CORREÇÃO: Desestruture o retorno do serviço
+    const { html, order } = await this.pdfService.generateOrderHtml(id);
+    
+    // 2. CORREÇÃO: Passe apenas a string 'html' para o gerador
     const pdfBuffer = await this.pdfService.generatePdfFromHtml(html);
 
-    // 6. Configure os cabeçalhos da resposta
+    // 3. Lógica para o nome do arquivo (usando o objeto 'order' que recuperamos)
+    const date = new Date(order.createdAt);
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    
+    // Limpa o nome do cliente para usar no arquivo
+    const clientName = (order.client?.name || 'Pedido_Interno')
+      .replace(/[^a-zA-Z0-9]/g, '_');
+
+    const filename = `pedido_${order.id}_${clientName}_${dateString}.pdf`;
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename=pedido_${id}.pdf`, // Sugere um nome para download
+      `attachment; filename="${filename}"`,
     );
 
-    // 7. Envie o PDF como resposta
     res.send(pdfBuffer);
   }
-  // --- FIM DO NOVO ENDPOINT ---
+  // --------------------------------
 
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {

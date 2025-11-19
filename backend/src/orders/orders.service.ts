@@ -9,15 +9,13 @@ export class OrdersService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Cria um novo Pedido
-   * @param createOrderDto - A lista de itens e os dados do pedido
-   * @param userId - O ID do usuário logado (funcionário)
+   * Cria um novo Pedido com itens, cliente opcional e data de entrega
    */
   async create(createOrderDto: CreateOrderDto, userId: number) {
-    // 1. Desestruture todos os campos do DTO
-    const { items, clientId, observations } = createOrderDto;
+    // 1. Desestruture todos os campos, incluindo a nova data de entrega
+    const { items, clientId, observations, deliveryDate } = createOrderDto;
 
-    // --- Validação (Itens) ---
+    // --- Validação (Itens e Produtos) ---
     const productIds = items.map((item) => item.productId);
     const productsInDb = await this.prisma.product.findMany({
       where: {
@@ -25,6 +23,7 @@ export class OrdersService {
       },
     });
 
+    // Verifica se todos os produtos existem
     if (productsInDb.length !== productIds.length) {
       throw new NotFoundException('Um ou mais produtos não foram encontrados.');
     }
@@ -39,121 +38,114 @@ export class OrdersService {
       }
     }
 
-    // --- Cálculo (Total e Itens) ---
+    // --- Cálculo (Total e Preparação dos Itens) ---
     let total = 0;
     const orderItemsData = items.map((item) => {
       const product = productsInDb.find((p) => p.id === item.productId);
+      
+      // Segurança extra caso o find falhe (embora verificado acima)
       if (!product) {
         throw new BadRequestException(`Produto com ID ${item.productId} não encontrado.`);
       }
+      
       const itemTotal = product.price * item.quantity;
       total += itemTotal;
 
       return {
         productId: item.productId,
         quantity: item.quantity,
-        price: product.price, // Salva o preço no momento da compra
+        price: product.price, // Salva o preço exato do momento da compra
       };
     });
 
-    // --- Transação (Criação) ---
+    // --- Transação (Criação Atômica) ---
+    // Garante que o Pedido e os Itens sejam criados juntos ou nenhum deles
     return this.prisma.$transaction(async (tx) => {
-      // Crie o Pedido "pai"
+      // 1. Cria o Pedido "pai"
       const order = await tx.order.create({
         data: {
           userId: userId,
           total: total,
           status: 'PENDENTE',
-          observations: observations, // <-- CAMPO NOVO
-          clientId: clientId,       // <-- CAMPO NOVO
+          observations: observations,
+          clientId: clientId,
+          deliveryDate: deliveryDate, // Salva a data de entrega
         },
       });
 
-      // Crie os Itens do Pedido "filhos"
+      // 2. Cria os Itens do Pedido "filhos"
       await tx.orderItem.createMany({
         data: orderItemsData.map((item) => ({
           ...item,
-          orderId: order.id, // Conecte ao Pedido "pai"
+          orderId: order.id,
         })),
       });
 
-      // Retorne o pedido completo
+      // 3. Retorna o pedido completo com as relações carregadas
       return tx.order.findUnique({
         where: { id: order.id },
         include: {
           items: true,
-          client: true, // Inclua os dados do cliente
+          client: true, // Retorna os dados do cliente para o frontend
         },
       });
     });
   }
 
-  // Os métodos abaixo foram gerados pelo Nest CLI e podem ser implementados
-
-// Substitua a função findAll() por esta
-findAll() {
-  return this.prisma.order.findMany({
-    select: {
-      id: true,
-      total: true,
-      status: true,
-      createdAt: true,       // obrigatório para o frontend
-      user: {
-        select: { name: true, email: true }
+  /**
+   * Lista todos os pedidos
+   */
+  findAll() {
+    return this.prisma.order.findMany({
+      orderBy: {
+        createdAt: 'desc', // Mais recentes primeiro
       },
-      client: {
-        select: { name: true, phone: true }
-      },
-      items: {
-        select: {
-          id: true,
-          quantity: true,
-          price: true,
-          product: {
-            select: { name: true }
+      include: {
+        user: {
+          select: { name: true, email: true } // Dados do funcionário
+        },
+        client: {
+          select: { name: true, phone: true } // Dados do cliente
+        },
+        items: {
+          include: {
+            product: {
+              select: { name: true } // Nome do produto em cada item
+            }
           }
         }
       }
-    },
-    orderBy: { createdAt: 'desc' }
-  });
-}
+    });
+  }
 
-
-// Substitua a função findOne(id: number) por esta
-findOne(id: number) {
-  return this.prisma.order.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      status: true,
-      total: true,
-      observations: true,
-      createdAt: true,
-      user: {
-        select: { name: true, email: true }
-      },
-      client: {
-        select: { id: true, name: true, phone: true, address: true }
-      },
-      items: {
-        select: {
-          id: true,
-          quantity: true,
-          price: true,
-          product: {
-            select: { id: true, name: true, price: true }
+  /**
+   * Busca um pedido específico pelo ID
+   */
+  findOne(id: number) {
+    return this.prisma.order.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: { name: true, email: true }
+        },
+        client: {
+          select: { name: true, phone: true, address: true }
+        },
+        items: {
+          include: {
+            product: {
+              select: { name: true, price: true }
+            }
           }
         }
       }
-    }
-  });
-}
+    });
+  }
 
-
-
+  /**
+   * Atualiza um pedido (ex: Status)
+   */
   update(id: number, updateOrderDto: UpdateOrderDto) {
-    // Implementação: atualizar o status
     return this.prisma.order.update({
       where: { id: id },
       data: {
@@ -162,17 +154,19 @@ findOne(id: number) {
     });
   }
 
+  /**
+   * Deleta um pedido e seus itens (Transação)
+   */
   remove(id: number) {
-    // Implementação: deletar o pedido e seus itens
     return this.prisma.$transaction(async (tx) => {
-      // 1. Delete todos os "OrderItems" associados
+      // 1. Primeiro deleta os itens (filhos)
       await tx.orderItem.deleteMany({
         where: {
           orderId: id,
         },
       });
 
-      // 2. Delete o "Order"
+      // 2. Depois deleta o pedido (pai)
       const deletedOrder = await tx.order.delete({
         where: {
           id: id,
