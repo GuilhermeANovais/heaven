@@ -34,19 +34,21 @@ type SnackbarState = {
 } | null;
 
 export function NewOrderPage() {
-  // --- Estados ---
+  // --- Estados de Dados ---
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   
+  // --- Estados de Carregamento ---
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingClients, setLoadingClients] = useState(true);
   
-  // Campos do Formulário
+  // --- Campos do Formulário ---
   const [selectedClientId, setSelectedClientId] = useState<number | ''>('');
   const [observations, setObservations] = useState('');
+  const [deliveryDate, setDeliveryDate] = useState(''); // Novo campo de Data
   
-  // Estados de UI
+  // --- Estados de UI ---
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [snackbar, setSnackbar] = useState<SnackbarState>(null);
   const [clientModalOpen, setClientModalOpen] = useState(false);
@@ -54,8 +56,6 @@ export function NewOrderPage() {
   const navigate = useNavigate();
 
   // --- Busca de Dados ---
-
-  // Função para buscar clientes (usada no inicio e após criar um novo cliente)
   const fetchClients = useCallback(async () => {
     try {
       const clientResponse = await api.get('/clients');
@@ -69,7 +69,6 @@ export function NewOrderPage() {
 
   useEffect(() => {
     async function init() {
-      // Busca Produtos
       try {
         const productResponse = await api.get('/products');
         setProducts(productResponse.data);
@@ -78,15 +77,12 @@ export function NewOrderPage() {
       } finally {
         setLoadingProducts(false);
       }
-      
-      // Busca Clientes
       fetchClients();
     }
     init();
   }, [fetchClients]);
 
   // --- Lógica do Carrinho ---
-
   const handleAddToCart = (productToAdd: Product) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === productToAdd.id);
@@ -106,11 +102,9 @@ export function NewOrderPage() {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === productId);
       if (!existingItem) return prevCart;
-
       if (existingItem.quantity === 1) {
         return prevCart.filter((item) => item.id !== productId);
       }
-      
       return prevCart.map((item) =>
         item.id === productId
           ? { ...item, quantity: item.quantity - 1 }
@@ -128,20 +122,19 @@ export function NewOrderPage() {
   }, [cart]);
   
   // --- Lógica de Finalização ---
-
   const handleFinishOrder = async () => {
     setIsSubmitting(true);
     setSnackbar(null);
 
-    // Monta o DTO para o backend
     const orderData = {
       items: cart.map(item => ({
         productId: item.id,
         quantity: item.quantity,
       })),
-      // Envia undefined se estiver vazio, ou o número se estiver selecionado
       clientId: selectedClientId || undefined,
       observations: observations || undefined,
+      // Converte a string do input para ISO Date
+      deliveryDate: deliveryDate ? new Date(deliveryDate).toISOString() : undefined,
     };
 
     try {
@@ -149,12 +142,12 @@ export function NewOrderPage() {
       
       setSnackbar({ open: true, message: 'Pedido criado com sucesso!', severity: 'success' });
       
-      // Limpa o estado
+      // Limpa o formulário
       setCart([]);
       setObservations('');
       setSelectedClientId('');
+      setDeliveryDate('');
       
-      // Redireciona após 2 segundos
       setTimeout(() => {
         navigate('/orders');
       }, 2000);
@@ -167,17 +160,14 @@ export function NewOrderPage() {
     }
   };
 
-  // --- Lógica do Novo Cliente (Callback) ---
+  // Callback quando um cliente é criado no modal
   const handleClientCreated = (newClient: any) => {
-    // 1. Recarrega a lista para garantir que temos os dados mais recentes
-    fetchClients();
-    // 2. Seleciona automaticamente o cliente recém-criado no dropdown
+    fetchClients(); 
     setSelectedClientId(newClient.id);
   };
 
   const handleCloseSnackbar = () => setSnackbar(null);
 
-  // --- JSX ---
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
@@ -185,7 +175,7 @@ export function NewOrderPage() {
       </Typography>
       
       <Grid container spacing={3}>
-        {/* Coluna da Esquerda: Lista de Produtos */}
+        {/* Coluna Esquerda: Produtos */}
         <Grid item xs={12} md={7}>
           <Paper elevation={3} sx={{ p: 2, backgroundColor: 'white' }}>
             <Typography variant="h6" gutterBottom>Produtos Disponíveis</Typography>
@@ -218,13 +208,13 @@ export function NewOrderPage() {
           </Paper>
         </Grid>
 
-        {/* Coluna da Direita: Carrinho e Detalhes */}
+        {/* Coluna Direita: Detalhes */}
         <Grid item xs={12} md={5}>
           <Paper elevation={3} sx={{ p: 2, backgroundColor: 'white' }}>
             <Typography variant="h6" gutterBottom>Detalhes do Pedido</Typography>
             <Divider sx={{ mb: 2 }} />
 
-            {/* Seleção de Cliente com Botão de Adicionar */}
+            {/* Seleção de Cliente + Botão Novo */}
             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 2 }}>
               <FormControl fullWidth>
                 <InputLabel id="client-select-label">Cliente (Opcional)</InputLabel>
@@ -249,13 +239,24 @@ export function NewOrderPage() {
               <Tooltip title="Cadastrar Novo Cliente">
                 <Button 
                   variant="outlined" 
-                  sx={{ height: '56px', minWidth: '56px' }} // Altura para alinhar com o input
+                  sx={{ height: '56px', minWidth: '56px' }}
                   onClick={() => setClientModalOpen(true)}
                 >
                   <PersonAdd />
                 </Button>
               </Tooltip>
             </Box>
+
+            {/* Input de Data de Entrega */}
+            <TextField
+              label="Data de Entrega/Retirada"
+              type="datetime-local"
+              fullWidth
+              margin="normal"
+              InputLabelProps={{ shrink: true }}
+              value={deliveryDate}
+              onChange={(e) => setDeliveryDate(e.target.value)}
+            />
 
             <TextField
               label="Observações (Opcional)"
@@ -270,7 +271,6 @@ export function NewOrderPage() {
             <Divider sx={{ mt: 2, mb: 2 }} />
             <Typography variant="h6" gutterBottom>Carrinho</Typography>
 
-            {/* Lista de Itens no Carrinho */}
             <List sx={{ maxHeight: '30vh', overflow: 'auto' }}>
               {cart.length === 0 ? (
                 <Typography variant="body1" sx={{ fontStyle: 'italic' }}>
@@ -317,17 +317,17 @@ export function NewOrderPage() {
         </Grid>
       </Grid>
 
-      {/* Modal para Criar Cliente na Hora */}
+      {/* Modal de Cliente */}
       <ClientModal
         open={clientModalOpen}
         handleClose={() => setClientModalOpen(false)}
-        onSave={() => {}} // Não precisamos de recarregar a tabela aqui, o onSuccess cuida disso
-        onSuccess={handleClientCreated} // Callback especial
-        clientToEdit={null} // Sempre criando novo
+        onSave={() => {}}
+        onSuccess={handleClientCreated}
+        clientToEdit={null}
         setSnackbar={setSnackbar}
       />
 
-      {/* Snackbar de Feedback */}
+      {/* Snackbar */}
       {snackbar && (
         <Snackbar
           open={snackbar.open}

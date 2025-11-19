@@ -4,9 +4,10 @@ import {
   ValidateNested,
   IsArray,
   ArrayMinSize,
-  IsInt,       // <-- Importe
-  IsOptional,  // <-- Importe
-  IsString,    // <-- Importe
+  IsInt,
+  IsOptional,
+  IsString,
+  IsDateString
 } from 'class-validator';
 import { CreateOrderItemDto } from './create-order-item.dto'; // (Esta importação está correta aqui)
 
@@ -25,4 +26,8 @@ export class CreateOrderDto {
   @IsString()
   @IsOptional()
   observations?: string;
+
+  @IsDateString()
+  @IsOptional()
+  deliveryDate?: string;
 }

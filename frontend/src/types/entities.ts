@@ -24,27 +24,16 @@ export interface OrderUser { // Funcionário
 }
 
 // Interface para a lista principal de pedidos (GET /orders)
-export type OrderSummary = {
+export interface OrderSummary {
   id: number;
-  total: number;
-  status: string;
   createdAt: string;
-  client: {
-    name: string;
-    phone: string;
-  } | null;
-  user: {
-    name: string;
-    email: string;
-  };
-  items: {
-    quantity: number;
-    price: number;
-    product: {
-      name: string;
-    };
-  }[];
-};
+  status: string;
+  total: number;
+  user: OrderUser;
+  client: Client | null;
+  deliveryDate?: string | null;
+  items: { id: number }[];
+}
 
 
 // Interface para os detalhes completos de um pedido (GET /orders/:id)
@@ -53,6 +42,7 @@ export interface FullOrder {
   status: string;
   total: number;
   observations?: string | null;
+  deliveryDate?: string | null;
   createdAt: string;
   client?: Client | null;
   items: OrderItem[];

@@ -1,6 +1,6 @@
 // src/pages/OrdersPage.tsx
 import {
-  Box, Typography, Button, CircularProgress, Select, MenuItem,
+  Box, Typography, Button, Select, MenuItem,
   SelectChangeEvent, Snackbar, Alert, IconButton
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
@@ -8,7 +8,7 @@ import { Add, Delete, Visibility } from '@mui/icons-material';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
-import { OrderDetailsModal } from '../components/OrderDetailsModal'; 
+import { OrderDetailsModal } from '../components/OrderDetailsModal';
 import { OrderSummary } from '../types/entities';
 
 type SnackbarState = {
@@ -17,8 +17,14 @@ type SnackbarState = {
   severity: 'success' | 'error';
 } | null;
 
+// Estendemos a interface localmente para garantir que o TS reconheça o novo campo
+// caso o arquivo entities.ts não tenha sido atualizado
+interface OrderWithDelivery extends OrderSummary {
+  deliveryDate?: string | null;
+}
+
 export function OrdersPage() {
-  const [orders, setOrders] = useState<OrderSummary[]>([]);
+  const [orders, setOrders] = useState<OrderWithDelivery[]>([]);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState<SnackbarState>(null);
   const navigate = useNavigate();
@@ -28,7 +34,8 @@ export function OrdersPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get<OrderSummary[]>('/orders');
+      const response = await api.get<OrderWithDelivery[]>('/orders');
+      console.log("DADOS RECEBIDOS:", response.data);
       setOrders(response.data);
     } catch (error) {
       console.error("Erro ao buscar pedidos:", error);
@@ -71,20 +78,19 @@ export function OrdersPage() {
   const handleCloseSnackbar = () => setSnackbar(null);
   const handleNewOrder = () => navigate('/orders/new');
 
-  // --- DEFINIÇÃO DAS COLUNAS CORRIGIDA (MUI v7) ---
-  const columns = useMemo((): GridColDef<OrderSummary>[] => [
+  // --- Colunas ---
+  const columns = useMemo((): GridColDef<OrderWithDelivery>[] => [
     { field: 'id', headerName: 'ID', width: 70 },
     {
       field: 'clientName',
       headerName: 'Cliente',
-      width: 200,
-      // CORREÇÃO: Usar (value, row) em vez de (params)
+      width: 180,
       valueGetter: (_value, row) => row.client?.name || 'Pedido Interno',
     },
     {
       field: 'status',
       headerName: 'Status',
-      width: 150,
+      width: 140,
       renderCell: (params) => {
         let color = 'default';
         if (params.value === 'CONCLUÍDO') color = 'success';
@@ -92,11 +98,35 @@ export function OrdersPage() {
         return <Typography color={color}>{params.value}</Typography>;
       }
     },
+    // NOVA COLUNA DE ENTREGA
+    {
+      field: 'deliveryDate',
+      headerName: 'Entrega',
+      width: 180,
+      // Usamos valueGetter para garantir que pegamos o valor, mesmo se estiver aninhado ou undefined
+      valueGetter: (value, row) => {
+        // Tenta pegar do value (padrão) ou direto da linha (row)
+        return value || row.deliveryDate;
+      },
+      valueFormatter: (value) => {
+        if (!value) return '—';
+        try {
+          return new Date(value).toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        } catch (e) {
+          return 'Data Inválida';
+        }
+      },
+    },
     {
       field: 'total',
       headerName: 'Total',
       type: 'number',
-      width: 120,
+      width: 110,
       valueFormatter: (value) => {
         if (value == null) return ''; 
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -106,14 +136,13 @@ export function OrdersPage() {
       field: 'itemCount',
       headerName: 'Itens',
       type: 'number',
-      width: 90,
-      // CORREÇÃO: Usar (value, row) em vez de (params)
+      width: 80,
       valueGetter: (_value, row) => row.items?.length || 0,
     },
     {
       field: 'createdAt',
-      headerName: 'Data',
-      width: 180,
+      headerName: 'Criado em',
+      width: 160,
       valueFormatter: (value) => {
         if (value == null) return '';
         return new Date(value).toLocaleString('pt-BR');
