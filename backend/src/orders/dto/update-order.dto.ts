@@ -1,7 +1,6 @@
 // src/orders/dto/update-order.dto.ts
-import { IsString, IsNotEmpty, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsDateString, IsIn } from 'class-validator';
 
-// Lista de status válidos
 const validStatus = [
   'PENDENTE',
   'CONCLUÍDO',
@@ -12,7 +11,19 @@ const validStatus = [
 
 export class UpdateOrderDto {
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @IsIn(validStatus, { message: 'Status inválido.' })
-  status: string;
+  status?: string;
+
+  @IsInt()
+  @IsOptional()
+  clientId?: number;
+
+  @IsDateString()
+  @IsOptional()
+  deliveryDate?: string;
+
+  @IsString()
+  @IsOptional()
+  observations?: string;
 }

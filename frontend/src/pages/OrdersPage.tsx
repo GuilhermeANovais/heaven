@@ -4,7 +4,8 @@ import {
   SelectChangeEvent, Snackbar, Alert, IconButton
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { Add, Delete, Visibility } from '@mui/icons-material';
+import { Add, Delete, Visibility, Edit } from '@mui/icons-material';
+import { EditOrderModal } from '../components/EditOrderModal';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +29,8 @@ export function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState<SnackbarState>(null);
   const navigate = useNavigate();
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [orderToEdit, setOrderToEdit] = useState<OrderSummary | null>(null);
 
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
 
@@ -72,6 +75,11 @@ export function OrdersPage() {
       }
     }
   }, [fetchOrders]);
+
+  const handleEditOrder = (order: OrderSummary) => {
+    setOrderToEdit(order);
+    setEditModalOpen(true);
+  };
 
   const handleViewDetails = (id: number) => setSelectedOrderId(id);
   const handleCloseDetailsModal = () => setSelectedOrderId(null);
@@ -163,6 +171,14 @@ export function OrdersPage() {
             >
               <Visibility />
             </IconButton>
+            <IconButton 
+              color="primary" 
+              size="small" 
+              onClick={() => handleEditOrder(params.row)}
+            >
+              <Edit />
+            </IconButton>
+
             <Select
               value={params.row.status}
               onChange={(e: SelectChangeEvent) => handleStatusChange(params.row.id, e.target.value)}
@@ -218,6 +234,14 @@ export function OrdersPage() {
         open={selectedOrderId !== null}
         handleClose={handleCloseDetailsModal}
         orderId={selectedOrderId}
+      />
+
+      <EditOrderModal 
+        open={editModalOpen}
+        handleClose={() => setEditModalOpen(false)}
+        onSave={fetchOrders} // Recarrega a tabela ao salvar
+        order={orderToEdit}
+        setSnackbar={setSnackbar}
       />
 
       {snackbar && (

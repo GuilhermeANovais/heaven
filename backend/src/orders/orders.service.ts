@@ -146,10 +146,15 @@ export class OrdersService {
    * Atualiza um pedido (ex: Status)
    */
   update(id: number, updateOrderDto: UpdateOrderDto) {
+    const { status, clientId, deliveryDate, observations } = updateOrderDto;
+
     return this.prisma.order.update({
       where: { id: id },
       data: {
-        status: updateOrderDto.status,
+        status: status,
+        clientId: clientId,
+        deliveryDate: deliveryDate,
+        observations: observations,
       },
     });
   }
