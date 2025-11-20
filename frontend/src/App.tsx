@@ -22,7 +22,7 @@ function DashboardLayout() {
   const auth = useAuth(); // 3. CHAME o hook de autenticação
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <CssBaseline />
       <AppBar
         position="fixed"
