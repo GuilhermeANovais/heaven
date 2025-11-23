@@ -25,6 +25,16 @@ export class ClientsService {
   findOne(id: number) {
     return this.prisma.client.findUnique({
       where: { id },
+      include: {
+        orders: {
+          orderBy: { createdAt: 'desc' }, // Pedidos mais recentes primeiro
+          include: {
+            items: {
+              include: { product: true },
+            },
+          },
+        },
+      },
     });
   }
 
