@@ -52,7 +52,7 @@ interface StatCardProps {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
-// --- COMPONENTE STATCARD ---
+// --- COMPONENTE STATCARD (Corrigido: Alinhamento Centralizado) ---
 function StatCard({ title, value, color, icon }: StatCardProps) {
   return (
     <Grid item xs={12} sm={6} md={3}>
@@ -66,7 +66,7 @@ function StatCard({ title, value, color, icon }: StatCardProps) {
           borderLeft: `5px solid ${color || '#1B5E20'}`,
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center', // Centralizado verticalmente
+          alignItems: 'center', // Centraliza verticalmente o texto e o ícone
           height: '100%' 
         }}
       >
@@ -98,18 +98,18 @@ function StatCard({ title, value, color, icon }: StatCardProps) {
           </Typography>
         </Box>
         
-        {/* Ícone */}
+        {/* Ícone Redondo */}
         <Box sx={{ 
           color: color || '#1B5E20', 
           opacity: 0.9,
           width: 45,
           height: 45,
-          borderRadius: '50%',
+          borderRadius: '50%', // Círculo perfeito
           backgroundColor: `${color}15`, 
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          flexShrink: 0 
+          flexShrink: 0 // Impede que o ícone amasse
         }}>
           {icon}
         </Box>
@@ -153,7 +153,7 @@ export function DashboardPage() {
         Visão Geral
       </Typography>
 
-      {/* Notificações */}
+      {/* Notificações de Pedidos Próximos */}
       {stats?.upcomingOrders && stats.upcomingOrders.length > 0 && (
         <Paper elevation={0} sx={{ mb: 4, overflow: 'hidden', border: '1px solid #ed6c02', borderRadius: 2 }}>
           <Alert 
@@ -191,7 +191,7 @@ export function DashboardPage() {
         </Paper>
       )}
 
-      {/* Cards */}
+      {/* Cartões de Estatísticas */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <StatCard 
           title="Produtos" 
@@ -212,90 +212,90 @@ export function DashboardPage() {
           icon={<DollarSign size={20} strokeWidth={2} />} 
         />
         <StatCard 
-          title="Entregas Próximas" 
+          title="Entregas Urgentes" 
           value={stats?.upcomingOrders.length || 0} 
           color="#d32f2f" 
           icon={<Timer size={20} strokeWidth={2} />} 
         />
       </Grid>
 
-      {/* Gráficos */}
+      {/* Gráficos (Layout Vertical - Um por linha para mais espaço) */}
       <Grid container spacing={3}>
         
-        {/* 1. Gráfico de Linha (Ocupa 8 colunas - Mais largo) */}
-        <Grid item xs={12} md={8}>
-          <Paper elevation={0} sx={{ p: 3, height: 400, width: 800, border: '1px solid #e0e0e0', borderRadius: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+        {/* 1. Gráfico de Linha (Largura Total) */}
+        <Grid item xs={12} md={12}>
+          <Paper elevation={0} sx={{ p: 3, height: 450, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 500, mb: 3 }}>
               Faturamento (Últimos 7 dias)
             </Typography>
             <ResponsiveContainer width="100%" height="85%">
               <LineChart
                 data={stats?.salesData}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
                 <XAxis 
                   dataKey="date" 
-                  tick={{ fill: '#6b7280', fontSize: 12 }} 
-                  axisLine={{ stroke: '#e5e7eb' }}
+                  tick={{ fill: '#666', fontSize: 12 }} 
+                  axisLine={{ stroke: '#e0e0e0' }}
                   tickLine={false}
                   dy={10}
                 />
                 <YAxis 
-                  tick={{ fill: '#6b7280', fontSize: 12 }} 
+                  tick={{ fill: '#666', fontSize: 12 }} 
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(value) => `R$${value}`}
                 />
                 <Tooltip 
                    formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Vendas']}
-                   contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                 />
                 <Line 
                   type="monotone" 
                   dataKey="amount" 
-                  stroke="#16a34a" 
+                  stroke="#1B5E20" 
                   strokeWidth={3}
-                  activeDot={{ r: 6, fill: '#16a34a', stroke: '#fff', strokeWidth: 2 }} 
-                  dot={{ fill: '#16a34a', r: 4 }}
+                  activeDot={{ r: 6, fill: '#1B5E20', stroke: '#fff', strokeWidth: 2 }} 
+                  dot={{ fill: '#1B5E20', r: 4 }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </Paper>
         </Grid>
 
-        {/* 2. Gráfico de Pizza (Ocupa 4 colunas - Menor e Compacto) */}
-        <Grid item xs={12} md={4}>
-          <Paper elevation={0} sx={{ p: 3, height: 400, width: 700, border: '1px solid #e0e0e0', borderRadius: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-              Produtos com mais saída
+        {/* 2. Gráfico de Pizza (Largura Total) */}
+        <Grid item xs={12} md={12}>
+          <Paper elevation={0} sx={{ p: 3, height: 450, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 500, mb: 3 }}>
+              Top Produtos (Quantidade)
             </Typography>
-            <ResponsiveContainer width="100%" height="85%">
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={stats?.topProducts}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60} // Raio interno menor
-                  outerRadius={80} // Raio externo reduzido para não cortar
+                  innerRadius={80}
+                  outerRadius={120}
                   fill="#8884d8"
                   paddingAngle={5}
                   dataKey="value"
-                  // Label removida para evitar cortes e sobreposição
+                  label // Mostra valor no gráfico
                 >
                   {stats?.topProducts.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                 />
                 <Legend 
-                  layout="horizontal" 
-                  verticalAlign="bottom" 
-                  align="center"
+                  layout="vertical" 
+                  verticalAlign="middle" 
+                  align="right"
                   iconType="circle"
-                  wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                  wrapperStyle={{ fontSize: '14px', right: 20 }}
                 /> 
               </PieChart>
             </ResponsiveContainer>
