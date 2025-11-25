@@ -3,10 +3,10 @@ import {
   CircularProgress, Divider, IconButton, Snackbar, Alert,
   TextField, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Tooltip
 } from '@mui/material';
-import { Plus, Minus, Trash2, UserPlus, CreditCard } from 'lucide-react'; // Adicionado CreditCard
+import { Plus, Minus, Trash2, UserPlus, CreditCard } from 'lucide-react';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api';
+import api from '../api'; // O import funciona aqui porque estamos dentro de 'pages'
 import { ClientModal } from '../components/ClientModal';
 
 // --- Interfaces ---
@@ -36,15 +36,15 @@ export function NewOrderPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  
+
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingClients, setLoadingClients] = useState(true);
-  
+
   const [selectedClientId, setSelectedClientId] = useState<number | ''>('');
   const [observations, setObservations] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('CASH'); // Novo Estado
-  
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [snackbar, setSnackbar] = useState<SnackbarState>(null);
   const [clientModalOpen, setClientModalOpen] = useState(false);
@@ -96,11 +96,9 @@ export function NewOrderPage() {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === productId);
       if (!existingItem) return prevCart;
-
       if (existingItem.quantity === 1) {
         return prevCart.filter((item) => item.id !== productId);
       }
-      
       return prevCart.map((item) =>
         item.id === productId
           ? { ...item, quantity: item.quantity - 1 }
@@ -116,7 +114,7 @@ export function NewOrderPage() {
   const total = useMemo(() => {
     return cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   }, [cart]);
-  
+
   const handleFinishOrder = async () => {
     setIsSubmitting(true);
     setSnackbar(null);
@@ -129,20 +127,18 @@ export function NewOrderPage() {
       clientId: selectedClientId || undefined,
       observations: observations || undefined,
       deliveryDate: deliveryDate ? new Date(deliveryDate).toISOString() : undefined,
-      paymentMethod: paymentMethod, // Envia o método de pagamento
+      paymentMethod: paymentMethod,
     };
 
     try {
       await api.post('/orders', orderData);
-      
       setSnackbar({ open: true, message: 'Pedido criado com sucesso!', severity: 'success' });
-      
       setCart([]);
       setObservations('');
       setSelectedClientId('');
       setDeliveryDate('');
-      setPaymentMethod('CASH'); // Reseta para o padrão
-      
+      setPaymentMethod('CASH');
+
       setTimeout(() => {
         navigate('/orders');
       }, 2000);
@@ -156,7 +152,7 @@ export function NewOrderPage() {
   };
 
   const handleClientCreated = (newClient: any) => {
-    fetchClients(); 
+    fetchClients();
     setSelectedClientId(newClient.id);
   };
 
@@ -167,11 +163,11 @@ export function NewOrderPage() {
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1a1a1a' }}>
         Criar Novo Pedido
       </Typography>
-      
+
       <Grid container spacing={3}>
-        <Grid item xs={12} md={7}>
-          <Paper 
-            elevation={0} 
+        <Grid item xs={12} md={12} lg={7}>
+          <Paper
+            elevation={0}
             sx={{ p: 2, backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: 2 }}
           >
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 500 }}>
@@ -180,14 +176,14 @@ export function NewOrderPage() {
             {loadingProducts ? (
               <CircularProgress />
             ) : (
-              <List sx={{ maxHeight: '65vh', width: '52vh', overflow: 'auto' }}>
+              <List sx={{ maxHeight: '65vh', overflow: 'auto' }}>
                 {products.map((product) => (
-                  <ListItem 
+                  <ListItem
                     key={product.id}
                     divider
                     secondaryAction={
-                      <Button 
-                        variant="contained" 
+                      <Button
+                        variant="contained"
                         size="small"
                         startIcon={<Plus size={16} />}
                         onClick={() => handleAddToCart(product)}
@@ -197,7 +193,7 @@ export function NewOrderPage() {
                       </Button>
                     }
                   >
-                    <ListItemText 
+                    <ListItemText
                       primary={product.name}
                       secondary={`R$ ${product.price.toFixed(2)}`}
                       primaryTypographyProps={{ fontWeight: 500 }}
@@ -209,9 +205,9 @@ export function NewOrderPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={5}>
-          <Paper 
-            elevation={0} 
+        <Grid item xs={12} md={12} lg={5}>
+          <Paper
+            elevation={0}
             sx={{ p: 3, backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: 2 }}
           >
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 500 }}>
@@ -241,8 +237,8 @@ export function NewOrderPage() {
               </FormControl>
 
               <Tooltip title="Cadastrar Novo Cliente">
-                <Button 
-                  variant="outlined" 
+                <Button
+                  variant="outlined"
                   sx={{ height: '56px', minWidth: '56px', borderRadius: 1 }}
                   onClick={() => setClientModalOpen(true)}
                 >
@@ -261,7 +257,6 @@ export function NewOrderPage() {
               onChange={(e) => setDeliveryDate(e.target.value)}
             />
 
-            {/* CAMPO DE MÉTODO DE PAGAMENTO */}
             <FormControl fullWidth margin="normal">
               <InputLabel id="payment-method-label">Forma de Pagamento</InputLabel>
               <Select
@@ -275,9 +270,9 @@ export function NewOrderPage() {
                   </Box>
                 }
               >
-                <MenuItem value="CASH">Dinheiro</MenuItem>
-                <MenuItem value="PIX">PIX</MenuItem>
-                <MenuItem value="CARD">Cartão</MenuItem>
+                <MenuItem value="DINHEIRO">Dinheiro</MenuItem>
+              <MenuItem value="PIX">PIX</MenuItem>
+              <MenuItem value="CARTÃO">Cartão</MenuItem>
               </Select>
             </FormControl>
 
@@ -299,12 +294,12 @@ export function NewOrderPage() {
             <List sx={{ maxHeight: '30vh', overflow: 'auto' }}>
               {cart.length === 0 ? (
                 <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary', py: 2, textAlign: 'center' }}>
-                  O carrinho está vazio.
+                  O carrinho está vazio. Adicione produtos ao lado.
                 </Typography>
               ) : (
                 cart.map((item) => (
                   <ListItem key={item.id} divider>
-                    <ListItemText 
+                    <ListItemText
                       primary={item.name}
                       secondary={`Qtd: ${item.quantity} x R$ ${item.price.toFixed(2)}`}
                     />
@@ -349,7 +344,7 @@ export function NewOrderPage() {
       <ClientModal
         open={clientModalOpen}
         handleClose={() => setClientModalOpen(false)}
-        onSave={() => {}}
+        onSave={() => { }}
         onSuccess={handleClientCreated}
         clientToEdit={null}
         setSnackbar={setSnackbar}
