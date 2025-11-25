@@ -14,6 +14,7 @@ import {
   History,
   KanbanSquare,
   Wallet,
+  FileText,
 } from 'lucide-react';
 import { Routes, Route, Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
@@ -31,6 +32,7 @@ import { OrderCalendarPage } from './pages/OrderCalendarPage';
 import { AuditPage } from './pages/AuditPage'; 
 import { KanbanPage } from './pages/KanbanPage';
 import { ExpensesPage } from './pages/ExpensesPage';
+import { ReportsHistoryPage } from './pages/ReportsHistoryPage';
 
 const drawerWidth = 240;
 
@@ -212,6 +214,19 @@ function DashboardLayout() {
           </ListItemButton>
         </ListItem>
 
+        {/* Histórico */}
+        <ListItem key="Histórico" disablePadding>
+          <ListItemButton component={Link} to="/history" sx={menuItemStyle('/history')}>
+            <ListItemIcon sx={iconStyle('/history')}>
+              <FileText size={20} strokeWidth={1.5} />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Histórico" 
+              primaryTypographyProps={{ fontWeight: isActive('/history') ? 'bold' : 'medium', fontSize: '0.9rem' }} 
+            />
+          </ListItemButton>
+        </ListItem>
+
           </List>
           
           {/* Botão Sair */}
@@ -268,6 +283,7 @@ function App() {
         <Route path="audit" element={<AuditPage />} />
         <Route path="production" element={<KanbanPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
+        <Route path="history" element={<ReportsHistoryPage />} />
       </Route>
     </Routes>
   );

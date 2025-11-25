@@ -11,9 +11,13 @@ import { ClientsModule } from './clients/clients.module';
 import { PdfService } from './pdf/pdf.service';
 import { AuditModule } from './audit/audit.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { TasksService } from './tasks/tasks.service';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     PrismaModule,
     PrismaModule,
     ProductsModule,
@@ -24,8 +28,9 @@ import { ExpensesModule } from './expenses/expenses.module';
     ClientsModule,
     AuditModule,
     ExpensesModule,
+    ReportsModule,
   ],
   controllers: [AppController],
-  providers: [AppService, PdfService],
+  providers: [AppService, PdfService, TasksService],
 })
 export class AppModule {}
