@@ -224,7 +224,7 @@ export function DashboardPage() {
         
         {/* 1. Gráfico de Linha (Largura Total) */}
         <Grid item xs={12} md={12}>
-          <Paper elevation={0} sx={{ p: 3, height: 450, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+          <Paper elevation={0} sx={{ p: 3, height: 450, width: 750, border: '1px solid #e0e0e0', borderRadius: 2 }}>
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 500, mb: 3 }}>
               Faturamento (Últimos 7 dias)
             </Typography>
@@ -266,7 +266,7 @@ export function DashboardPage() {
 
         {/* 2. Gráfico de Pizza (Largura Total) */}
         <Grid item xs={12} md={12}>
-          <Paper elevation={0} sx={{ p: 3, height: 450, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+          <Paper elevation={0} sx={{ p: 3, height: 450, width: 750, border: '1px solid #e0e0e0', borderRadius: 2 }}>
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 500, mb: 3 }}>
               Top Produtos (Quantidade)
             </Typography>

@@ -152,7 +152,7 @@ export function OrdersPage() {
       width: 220,
       sortable: false,
       renderCell: (params) => {
-        const statusValue = ['PENDENTE', 'CONCLUÍDO', 'CANCELADO'].includes(params.row.status) ? params.row.status : 'PENDENTE';
+        const statusValue = ['PENDENTE', 'CONCLUÍDO', 'CANCELADO', 'SINAL PAGO'].includes(params.row.status) ? params.row.status : 'PENDENTE';
         
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>

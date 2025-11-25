@@ -11,7 +11,8 @@ import {
   Users, 
   LogOut,
   ChefHat,
-  History 
+  History,
+  KanbanSquare, 
 } from 'lucide-react';
 import { Routes, Route, Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
@@ -26,7 +27,8 @@ import { OrdersPage } from './pages/OrdersPage';
 import { NewOrderPage } from './pages/NewOrderPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { OrderCalendarPage } from './pages/OrderCalendarPage';
-import { AuditPage } from './pages/AuditPage'; // 2. Trouxe de volta a AuditPage
+import { AuditPage } from './pages/AuditPage'; 
+import { KanbanPage } from './pages/KanbanPage';
 
 const drawerWidth = 240;
 
@@ -184,6 +186,17 @@ function DashboardLayout() {
                 />
               </ListItemButton>
             </ListItem>
+            <ListItem key="Produção" disablePadding>
+              <ListItemButton component={Link} to="/production" sx={menuItemStyle('/production')}>
+                <ListItemIcon sx={iconStyle('/production')}>
+                  <KanbanSquare size={20} strokeWidth={1.5} />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Produção" 
+                  primaryTypographyProps={{ fontWeight: isActive('/production') ? 'bold' : 'medium', fontSize: '0.9rem' }} 
+                />
+              </ListItemButton>
+            </ListItem>
 
           </List>
           
@@ -238,7 +251,8 @@ function App() {
         <Route path="orders/new" element={<NewOrderPage />} />
         <Route path="clients" element={<ClientsPage />} />
         <Route path="calendar" element={<OrderCalendarPage />} />
-        <Route path="audit" element={<AuditPage />} /> {/* 4. Rota Restaurada */}
+        <Route path="audit" element={<AuditPage />} />
+        <Route path="production" element={<KanbanPage />} />
       </Route>
     </Routes>
   );
