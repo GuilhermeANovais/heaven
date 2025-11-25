@@ -3,10 +3,11 @@ import { IsString, IsOptional, IsInt, IsDateString, IsIn } from 'class-validator
 
 const validStatus = [
   'PENDENTE',
+  'EM_PREPARO',
+  'PRONTO',
   'CONCLUÍDO',
   'CANCELADO',
-  'SINAL PAGO',
-  'EM ANDAMENTO',
+  'SINAL_PAGO',
 ];
 
 export class UpdateOrderDto {
