@@ -51,7 +51,3 @@ O projeto é composto por um **backend em NestJS + Prisma** e um **frontend em V
 - Visualização rápida dos pedidos feitos por cada cliente.
 
 ---
-
-## 📁 Estrutura do Projeto
-
-### **Backend**
