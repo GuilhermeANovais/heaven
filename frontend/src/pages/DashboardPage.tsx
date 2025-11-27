@@ -4,13 +4,13 @@ import {
 } from '@mui/material';
 import { 
   TriangleAlert, Package, Users, DollarSign, Timer, 
-  TrendingDown, Wallet // Novos Ícones
+  TrendingDown, Wallet 
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import api from '../api';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, AreaChart, Area // Importe AreaChart
+  AreaChart, Area
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,12 +28,12 @@ interface Stats {
   productCount: number;
   userCount: number;
   salesData: ChartData[];
-  expensesData: ChartData[]; // Novo
+  expensesData: ChartData[];
   topProducts: TopProduct[];
   upcomingOrders: UpcomingOrder[];
-  revenueMonth: number; // Novo
-  expensesMonth: number; // Novo
-  netProfit: number; // Novo
+  revenueMonth: number;
+  expensesMonth: number;
+  netProfit: number;
 }
 
 interface StatCardProps {
@@ -42,8 +42,6 @@ interface StatCardProps {
   color?: string;
   icon: React.ReactNode;
 }
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 function StatCard({ title, value, color, icon }: StatCardProps) {
   return (
@@ -146,12 +144,12 @@ export function DashboardPage() {
         />
       </Grid>
 
-      {/* --- LINHA 3: Gráficos --- */}
+      {/* --- LINHA 3: Gráficos e Listas --- */}
       <Grid container spacing={3}>
         
         {/* Gráfico de Vendas */}
-        <Grid item xs={12} md={6}>
-          <Paper elevation={0} sx={{ p: 3, height: 400, width: 700, border: '1px solid #e0e0e0', borderRadius: 3 }}>
+        <Grid item xs={12} lg={6}>
+          <Paper elevation={0} sx={{ p: 3, height: 400, width: '100%', border: '1px solid #e0e0e0', borderRadius: 3 }}>
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>Faturamento (7 Dias)</Typography>
             <ResponsiveContainer width="100%" height="85%">
               <LineChart data={stats?.salesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -165,9 +163,9 @@ export function DashboardPage() {
           </Paper>
         </Grid>
 
-        {/* Gráfico de Despesas (NOVO) */}
-        <Grid item xs={12} md={6}>
-          <Paper elevation={0} sx={{ p: 3, height: 400, width: 700, border: '1px solid #e0e0e0', borderRadius: 3 }}>
+        {/* Gráfico de Despesas */}
+        <Grid item xs={12} lg={6}>
+          <Paper elevation={0} sx={{ p: 3, height: 400, width: '100%', border: '1px solid #e0e0e0', borderRadius: 3 }}>
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>Despesas (30 Dias)</Typography>
             <ResponsiveContainer width="100%" height="85%">
               <AreaChart data={stats?.expensesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -187,19 +185,49 @@ export function DashboardPage() {
           </Paper>
         </Grid>
 
-        {/* Gráfico de Pizza */}
-        <Grid item xs={12} md={12}>
-          <Paper elevation={0} sx={{ p: 3, height: 350, width: 450, border: '1px solid #e0e0e0', borderRadius: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>Top Produtos</Typography>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={stats?.topProducts} cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5} dataKey="value" label>
-                  {stats?.topProducts.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
-                <Legend verticalAlign="bottom" height={36} iconType="circle"/> 
-              </PieChart>
-            </ResponsiveContainer>
+        {/* Lista de Top Produtos (Substituindo o Gráfico de Pizza) */}
+        <Grid item xs={12}>
+          <Paper elevation={0} sx={{ p: 3, width: '100%', border: '1px solid #e0e0e0', borderRadius: 3 }}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>Top Produtos Mais Vendidos</Typography>
+            <List disablePadding>
+              {stats?.topProducts && stats.topProducts.length > 0 ? (
+                stats.topProducts.map((product, index) => (
+                  <ListItem 
+                    key={index} 
+                    divider={index < stats.topProducts.length - 1}
+                    sx={{ px: 1, py: 1.5 }}
+                  >
+                    {/* Ranking Number */}
+                    <Box 
+                      sx={{ 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 32, height: 32, borderRadius: '50%', 
+                        bgcolor: index < 3 ? '#e8f5e9' : '#f5f5f5', 
+                        color: index < 3 ? '#1B5E20' : '#757575',
+                        mr: 2, fontWeight: 'bold', fontSize: '0.875rem'
+                      }}
+                    >
+                      {index + 1}
+                    </Box>
+                    
+                    <ListItemText 
+                      primary={product.name} 
+                      primaryTypographyProps={{ fontWeight: 500, color: '#333' }}
+                    />
+                    
+                    <Chip 
+                      label={`${product.value} un.`} 
+                      size="small" 
+                      sx={{ fontWeight: 'bold', bgcolor: '#f0fdf4', color: '#166534', borderRadius: 1.5 }} 
+                    />
+                  </ListItem>
+                ))
+              ) : (
+                <Typography variant="body2" color="textSecondary" align="center" sx={{ py: 3 }}>
+                  Nenhum dado de vendas disponível.
+                </Typography>
+              )}
+            </List>
           </Paper>
         </Grid>
 

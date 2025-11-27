@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { 
   Box, AppBar, Toolbar, Typography, Drawer, List, ListItem, 
-  ListItemText, ListItemIcon, CssBaseline, ListItemButton
+  ListItemText, ListItemIcon, CssBaseline, ListItemButton, IconButton 
 } from '@mui/material';
 // Ícones da Lucide (Estilo Clean UI)
 import { 
@@ -15,14 +16,15 @@ import {
   Wallet,
   FileText,
   KanbanSquare,
-  Settings
+  Settings,
+  Menu as MenuIcon 
 } from 'lucide-react';
 import { Routes, Route, Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 
 // Componentes
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { GlobalSearch } from './components/GlobalSearch'; // Barra de Busca Global
+import { GlobalSearch } from './components/GlobalSearch'; 
 
 // Páginas
 import { ProductsPage } from './pages/ProductsPage';
@@ -47,36 +49,127 @@ const drawerWidth = 240;
 function DashboardLayout() {
   const auth = useAuth();
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Verifica se a rota atual corresponde ao link do menu
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
   const isActive = (path: string) => {
     if (path === '/' && location.pathname === '/') return true;
     if (path !== '/' && location.pathname.startsWith(path)) return true;
     return false;
   };
 
-  // Estilos fixos para o modo claro (Clean UI)
   const menuItemStyle = (path: string) => ({
     borderRadius: 2,
     mx: 1, 
     mb: 0.5, 
-    // Fundo verde claro se ativo, transparente se inativo
     backgroundColor: isActive(path) ? '#e8f5e9' : 'transparent', 
-    // Texto verde escuro se ativo, cinza escuro se inativo
     color: isActive(path) ? '#1B5E20' : '#4b5563', 
     '&:hover': {
-      backgroundColor: isActive(path) ? '#c8e6c9' : '#f3f4f6', // Hover suave
+      backgroundColor: isActive(path) ? '#c8e6c9' : '#f3f4f6', 
     },
   });
 
   const iconStyle = (path: string) => ({
-    // Ícone verde escuro se ativo, cinza claro se inativo
     color: isActive(path) ? '#1B5E20' : '#9ca3af',
     minWidth: 40,
   });
 
+  const drawerContent = (
+    <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%', pt: 2 }}>
+      <List>
+        <ListItem key="Dashboard" disablePadding>
+          <ListItemButton component={Link} to="/" sx={menuItemStyle('/')} onClick={() => setMobileOpen(false)}>
+            <ListItemIcon sx={iconStyle('/')}><LayoutDashboard size={20} strokeWidth={1.5} /></ListItemIcon>
+            <ListItemText primary="Dashboard" primaryTypographyProps={{ fontWeight: 'medium', fontSize: '0.9rem' }} />
+          </ListItemButton>
+        </ListItem>
+
+        <ListItem key="Pedidos" disablePadding>
+          <ListItemButton component={Link} to="/orders" sx={menuItemStyle('/orders')} onClick={() => setMobileOpen(false)}>
+            <ListItemIcon sx={iconStyle('/orders')}><Receipt size={20} strokeWidth={1.5} /></ListItemIcon>
+            <ListItemText primary="Pedidos" />
+          </ListItemButton>
+        </ListItem>
+
+        <ListItem key="Calendário" disablePadding>
+          <ListItemButton component={Link} to="/calendar" sx={menuItemStyle('/calendar')} onClick={() => setMobileOpen(false)}>
+            <ListItemIcon sx={iconStyle('/calendar')}><CalendarDays size={20} strokeWidth={1.5} /></ListItemIcon>
+            <ListItemText primary="Calendário" />
+          </ListItemButton>
+        </ListItem>
+
+        <ListItem key="Produção" disablePadding>
+          <ListItemButton component={Link} to="/production" sx={menuItemStyle('/production')} onClick={() => setMobileOpen(false)}>
+            <ListItemIcon sx={iconStyle('/production')}><KanbanSquare size={20} strokeWidth={1.5} /></ListItemIcon>
+            <ListItemText primary="Produção" />
+          </ListItemButton>
+        </ListItem>
+
+        <ListItem key="Produtos" disablePadding>
+          <ListItemButton component={Link} to="/products" sx={menuItemStyle('/products')} onClick={() => setMobileOpen(false)}>
+            <ListItemIcon sx={iconStyle('/products')}><ShoppingBag size={20} strokeWidth={1.5} /></ListItemIcon>
+            <ListItemText primary="Produtos" />
+          </ListItemButton>
+        </ListItem>
+
+        <ListItem key="Clientes" disablePadding>
+          <ListItemButton component={Link} to="/clients" sx={menuItemStyle('/clients')} onClick={() => setMobileOpen(false)}>
+            <ListItemIcon sx={iconStyle('/clients')}><Users size={20} strokeWidth={1.5} /></ListItemIcon>
+            <ListItemText primary="Clientes" />
+          </ListItemButton>
+        </ListItem>
+
+        <ListItem key="Despesas" disablePadding>
+          <ListItemButton component={Link} to="/expenses" sx={menuItemStyle('/expenses')} onClick={() => setMobileOpen(false)}>
+            <ListItemIcon sx={iconStyle('/expenses')}><Wallet size={20} strokeWidth={1.5} /></ListItemIcon>
+            <ListItemText primary="Despesas" />
+          </ListItemButton>
+        </ListItem>
+
+        <ListItem key="Histórico" disablePadding>
+          <ListItemButton component={Link} to="/history" sx={menuItemStyle('/history')} onClick={() => setMobileOpen(false)}>
+            <ListItemIcon sx={iconStyle('/history')}><FileText size={20} strokeWidth={1.5} /></ListItemIcon>
+            <ListItemText primary="Histórico" />
+          </ListItemButton>
+        </ListItem>
+
+        <ListItem key="Auditoria" disablePadding>
+          <ListItemButton component={Link} to="/audit" sx={menuItemStyle('/audit')} onClick={() => setMobileOpen(false)}>
+            <ListItemIcon sx={iconStyle('/audit')}><History size={20} strokeWidth={1.5} /></ListItemIcon>
+            <ListItemText primary="Auditoria" />
+          </ListItemButton>
+        </ListItem>
+      </List>
+      
+      <List sx={{ marginTop: 'auto', mb: 1 }}>
+        <ListItem key="Configurações" disablePadding>
+          <ListItemButton component={Link} to="/settings" sx={menuItemStyle('/settings')} onClick={() => setMobileOpen(false)}>
+            <ListItemIcon sx={iconStyle('/settings')}><Settings size={20} strokeWidth={1.5} /></ListItemIcon>
+            <ListItemText primary="Configurações" primaryTypographyProps={{ fontWeight: 'medium', fontSize: '0.9rem' }} />
+          </ListItemButton>
+        </ListItem>
+
+        <ListItem key="Sair" disablePadding>
+          <ListItemButton 
+            onClick={() => auth.logout()}
+            sx={{ 
+              borderRadius: 2, mx: 1, color: '#d32f2f', 
+              '&:hover': { backgroundColor: '#fee2e2' }
+            }}
+          >
+            <ListItemIcon sx={{ color: '#d32f2f', minWidth: 40 }}><LogOut size={20} strokeWidth={1.5} /></ListItemIcon>
+            <ListItemText primary="Sair" primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 'medium' }} />
+          </ListItemButton>
+        </ListItem>
+      </List>
+    </Box>
+  );
+
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f9fafb' }}> {/* Fundo cinza muito suave para o corpo */}
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f9fafb' }}> 
       <CssBaseline />
       
       {/* Barra Superior */}
@@ -87,182 +180,120 @@ function DashboardLayout() {
           backgroundColor: 'white', 
           color: '#1a1a1a', 
           boxShadow: 'none', 
-          borderBottom: '1px solid #e5e7eb' // Borda sutil em vez de sombra
+          borderBottom: '1px solid #e5e7eb',
+          // O AppBar ocupa toda a largura em todos os layouts (Clipped Drawer)
         }}
       >
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
           
-          {/* 1. Logo e Título */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 200 }}>
-            <Box sx={{ 
-              bgcolor: '#1B5E20', // Verde Institucional
-              color: 'white', 
-              p: 0.5, 
-              borderRadius: 1, 
-              display: 'flex' 
-            }}>
-              <ChefHat size={24} strokeWidth={1.5} />
+          {/* LADO ESQUERDO: Menu (Mobile) + Logo (Sempre Visível) */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            
+            {/* Botão Menu (Apenas Mobile) */}
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ display: { sm: 'none' } }}
+            >
+              <MenuIcon />
+            </IconButton>
+
+            {/* Logo e Título (Sempre presentes na Barra) */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ 
+                bgcolor: '#1B5E20', 
+                color: 'white', 
+                p: 0.5, 
+                borderRadius: 1, 
+                display: 'flex' 
+              }}>
+                <ChefHat size={24} strokeWidth={1.5} />
+              </Box>
+              <Typography 
+                variant="h6" 
+                noWrap 
+                component="div" 
+                sx={{ 
+                  fontWeight: 'bold', 
+                  letterSpacing: '-0.5px', 
+                  color: '#111827', 
+                  display: { xs: 'none', md: 'block' } // Texto apenas em Desktop para economizar espaço no mobile
+                }}
+              >
+                Confeitaria Heaven
+              </Typography>
             </Box>
-            <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold', letterSpacing: '-0.5px', color: '#111827', display: { xs: 'none', md: 'block' } }}>
-              Confeitaria Heaven
-            </Typography>
           </Box>
 
-          {/* 2. BUSCA GLOBAL (Centralizada) */}
+          {/* CENTRO/DIREITA: Busca Global */}
           <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center', maxWidth: 500 }}>
             <GlobalSearch />
           </Box>
 
-          {/* Espaço vazio para equilibrar o layout à direita (onde estava o dark mode) */}
+          {/* Espaço ou Ações à Direita */}
           <Box sx={{ minWidth: 40 }} />
-
         </Toolbar>
       </AppBar>
 
-      {/* Menu Lateral (Sidebar) */}
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { 
-            width: drawerWidth, 
-            boxSizing: 'border-box',
-            borderRight: '1px solid #e5e7eb',
-            backgroundColor: 'white'
-          },
-        }}
+      {/* Navegação (Drawer) */}
+      <Box
+        component="nav"
+        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        aria-label="mailbox folders"
       >
-        <Toolbar /> {/* Espaçador para não ficar por baixo do AppBar */}
-        
-        <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%', pt: 2 }}>
-          
-          {/* --- LISTA PRINCIPAL (Navegação) --- */}
-          <List>
-            {/* Dashboard */}
-            <ListItem key="Dashboard" disablePadding>
-              <ListItemButton component={Link} to="/" sx={menuItemStyle('/')}>
-                <ListItemIcon sx={iconStyle('/')}><LayoutDashboard size={20} strokeWidth={1.5} /></ListItemIcon>
-                <ListItemText primary="Dashboard" primaryTypographyProps={{ fontWeight: 'medium', fontSize: '0.9rem' }} />
-              </ListItemButton>
-            </ListItem>
+        {/* Drawer Mobile (Temporário) */}
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{ keepMounted: true }} 
+          sx={{
+            display: { xs: 'block', sm: 'none' },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          }}
+        >
+          <Toolbar /> {/* Espaçador para o AppBar */}
+          {drawerContent}
+        </Drawer>
 
-            {/* Pedidos */}
-            <ListItem key="Pedidos" disablePadding>
-              <ListItemButton component={Link} to="/orders" sx={menuItemStyle('/orders')}>
-                <ListItemIcon sx={iconStyle('/orders')}><Receipt size={20} strokeWidth={1.5} /></ListItemIcon>
-                <ListItemText primary="Pedidos" />
-              </ListItemButton>
-            </ListItem>
-
-            {/* Calendário */}
-            <ListItem key="Calendário" disablePadding>
-              <ListItemButton component={Link} to="/calendar" sx={menuItemStyle('/calendar')}>
-                <ListItemIcon sx={iconStyle('/calendar')}><CalendarDays size={20} strokeWidth={1.5} /></ListItemIcon>
-                <ListItemText primary="Calendário" />
-              </ListItemButton>
-            </ListItem>
-
-            {/* Produção (Kanban) */}
-            <ListItem key="Produção" disablePadding>
-              <ListItemButton component={Link} to="/production" sx={menuItemStyle('/production')}>
-                <ListItemIcon sx={iconStyle('/production')}><KanbanSquare size={20} strokeWidth={1.5} /></ListItemIcon>
-                <ListItemText primary="Produção" />
-              </ListItemButton>
-            </ListItem>
-
-            {/* Produtos */}
-            <ListItem key="Produtos" disablePadding>
-              <ListItemButton component={Link} to="/products" sx={menuItemStyle('/products')}>
-                <ListItemIcon sx={iconStyle('/products')}><ShoppingBag size={20} strokeWidth={1.5} /></ListItemIcon>
-                <ListItemText primary="Produtos" />
-              </ListItemButton>
-            </ListItem>
-
-            {/* Clientes */}
-            <ListItem key="Clientes" disablePadding>
-              <ListItemButton component={Link} to="/clients" sx={menuItemStyle('/clients')}>
-                <ListItemIcon sx={iconStyle('/clients')}><Users size={20} strokeWidth={1.5} /></ListItemIcon>
-                <ListItemText primary="Clientes" />
-              </ListItemButton>
-            </ListItem>
-
-            {/* Despesas */}
-            <ListItem key="Despesas" disablePadding>
-              <ListItemButton component={Link} to="/expenses" sx={menuItemStyle('/expenses')}>
-                <ListItemIcon sx={iconStyle('/expenses')}><Wallet size={20} strokeWidth={1.5} /></ListItemIcon>
-                <ListItemText primary="Despesas" />
-              </ListItemButton>
-            </ListItem>
-
-            {/* Histórico Financeiro */}
-            <ListItem key="Histórico" disablePadding>
-              <ListItemButton component={Link} to="/history" sx={menuItemStyle('/history')}>
-                <ListItemIcon sx={iconStyle('/history')}><FileText size={20} strokeWidth={1.5} /></ListItemIcon>
-                <ListItemText primary="Histórico" />
-              </ListItemButton>
-            </ListItem>
-
-            {/* Auditoria */}
-            <ListItem key="Auditoria" disablePadding>
-              <ListItemButton component={Link} to="/audit" sx={menuItemStyle('/audit')}>
-                <ListItemIcon sx={iconStyle('/audit')}><History size={20} strokeWidth={1.5} /></ListItemIcon>
-                <ListItemText primary="Auditoria" />
-              </ListItemButton>
-            </ListItem>
-          </List>
-          
-          {/* --- LISTA INFERIOR (Rodapé do Menu) --- */}
-          <List sx={{ marginTop: 'auto', mb: 1 }}>
-            
-            {/* Configurações */}
-            <ListItem key="Configurações" disablePadding>
-              <ListItemButton component={Link} to="/settings" sx={menuItemStyle('/settings')}>
-                <ListItemIcon sx={iconStyle('/settings')}><Settings size={20} strokeWidth={1.5} /></ListItemIcon>
-                <ListItemText primary="Configurações" primaryTypographyProps={{ fontWeight: 'medium', fontSize: '0.9rem' }} />
-              </ListItemButton>
-            </ListItem>
-
-            {/* Sair */}
-            <ListItem key="Sair" disablePadding>
-              <ListItemButton 
-                onClick={() => auth.logout()}
-                sx={{ 
-                  borderRadius: 2, mx: 1, color: '#d32f2f', // Vermelho para ação de sair
-                  '&:hover': { backgroundColor: '#fee2e2' }
-                }}
-              >
-                <ListItemIcon sx={{ color: '#d32f2f', minWidth: 40 }}><LogOut size={20} strokeWidth={1.5} /></ListItemIcon>
-                <ListItemText primary="Sair" primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 'medium' }} />
-              </ListItemButton>
-            </ListItem>
-          </List>
-
-        </Box>
-      </Drawer>
+        {/* Drawer Desktop (Permanente) */}
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: 'none', sm: 'block' },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, borderRight: '1px solid #e5e7eb' },
+          }}
+          open
+        >
+          <Toolbar /> {/* Espaçador para o AppBar */}
+          {drawerContent}
+        </Drawer>
+      </Box>
 
       {/* Área de Conteúdo Principal */}
-      <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` } }}>
-        <Toolbar /> {/* Espaçador invisível para compensar o AppBar fixo */}
-        
-        {/* Renderiza a página atual aqui */}
+      <Box 
+        component="main" 
+        sx={{ 
+          flexGrow: 1, 
+          p: 3, 
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          overflowX: 'hidden' 
+        }}
+      >
+        <Toolbar /> 
         <Outlet /> 
       </Box>
     </Box>
   );
 }
 
-/**
- * Componente Principal do App (Definição de Rotas)
- */
 function App() {
   return (
     <Routes>
-      {/* Rotas Públicas (Sem Layout) */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      
-      {/* Rotas Protegidas (Com Layout Dashboard) */}
       <Route 
         path="/" 
         element={
@@ -271,7 +302,6 @@ function App() {
           </ProtectedRoute>
         }
       >
-        {/* A rota 'index' é a página inicial (/) */}
         <Route index element={<DashboardPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="orders" element={<OrdersPage />} />
