@@ -1,16 +1,5 @@
-// backend/src/orders/orders.controller.ts
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UseGuards,
-  Request,
-  ParseIntPipe,
-  Res,
+  Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, ParseIntPipe, Res, Query, // <--- Query IMPORTADO
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -38,27 +27,21 @@ export class OrdersController {
     return this.ordersService.findAll();
   }
 
-  // --- NOVA ROTA DE DELIVERY ---
-  // (Importante: Deve vir ANTES de :id para não dar conflito)
   @Get('delivery/daily')
   getDeliveryStats() {
     return this.ordersService.getDeliveryStats();
   }
 
-  // --- Endpoint de PDF ---
+  // --- AQUI ESTÁ A CORREÇÃO CRÍTICA ---
+  // Verifica se tens o @Query('type') aqui
   @Get(':id/pdf')
   async getOrderPdf(
     @Param('id', ParseIntPipe) id: number,
+    @Query('type') type: 'receipt' | 'kitchen' = 'receipt', // Padrão 'receipt'
     @Res() res: Response,
   ) {
-    const { html, order } = await this.pdfService.generateOrderHtml(id);
-    const pdfBuffer = await this.pdfService.generatePdfFromHtml(html);
-
-    const date = new Date(order.createdAt);
-    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    
-    const clientName = (order.client?.name || 'Pedido_Interno').replace(/[^a-zA-Z0-9]/g, '_');
-    const filename = `pedido_${order.id}_${clientName}_${dateString}.pdf`;
+    // Passa o tipo para o service
+    const { buffer, filename } = await this.pdfService.generatePdf(id, type);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
@@ -66,10 +49,9 @@ export class OrdersController {
       `attachment; filename="${filename}"`,
     );
 
-    res.send(pdfBuffer);
+    res.send(buffer);
   }
 
-  // As rotas com :id vêm sempre em baixo
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.ordersService.findOne(id);
