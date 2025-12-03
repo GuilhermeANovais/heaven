@@ -26,7 +26,6 @@ import { ExpensesPage } from './pages/ExpensesPage';
 import { ReportsHistoryPage } from './pages/ReportsHistoryPage';
 import { KanbanPage } from './pages/KanbanPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { DeliveryPage } from './pages/DeliveryPage';
 
 const drawerWidth = 240;
 
@@ -80,9 +79,6 @@ function DashboardLayout() {
         
         {/* Dashboard: Apenas Admin */}
         <MenuLink to="/" text="Dashboard" icon={<LayoutDashboard size={20} />} roles={['ADMIN']} />
-
-        {/* Delivery: Admin e Delivery */}
-        <MenuLink to="/delivery" text="Delivery" icon={<Truck size={20} />} roles={['ADMIN', 'DELIVERY']} />
 
         {/* Produção: Admin e Kitchen */}
         <MenuLink to="/production" text="Produção" icon={<KanbanSquare size={20} />} roles={['ADMIN', 'KITCHEN']} />
@@ -171,13 +167,6 @@ function App() {
         <Route index element={
           <ProtectedRoute allowedRoles={['ADMIN']}>
             <DashboardPage />
-          </ProtectedRoute>
-        } />
-
-        {/* ROTAS DELIVERY (Admin + Delivery) */}
-        <Route path="delivery" element={
-          <ProtectedRoute allowedRoles={['ADMIN', 'DELIVERY']}>
-            <DeliveryPage />
           </ProtectedRoute>
         } />
 

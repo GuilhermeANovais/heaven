@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateOrderDto, PaymentMethodDto } from './dto/create-order.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { AuditService } from 'src/audit/audit.service';
+// Importamos o Enum do Prisma para garantir a tipagem correta
 import { PaymentMethod } from '@prisma/client';
 
 @Injectable()
@@ -12,7 +13,11 @@ export class OrdersService {
     private auditService: AuditService
   ) {}
 
+  /**
+   * Cria um novo Pedido
+   */
   async create(createOrderDto: CreateOrderDto, userId: number) {
+    // Desestrutura todos os campos, incluindo o novo paymentMethod
     const { items, clientId, observations, deliveryDate, paymentMethod } = createOrderDto;
 
     // 1. Validação dos Produtos
@@ -25,27 +30,23 @@ export class OrdersService {
       throw new NotFoundException('Um ou mais produtos não foram encontrados.');
     }
 
-    // Verifica estoque do DELIVERY
-    for (const item of items) {
-      const product = productsInDb.find((p) => p.id === item.productId);
-      if (product && product.stockDelivery < item.quantity) {
-        throw new BadRequestException(
-          `Sem estoque no Delivery para: ${product.name}. Disponível: ${product.stockDelivery}. Solicite transferência da Cozinha.`
-        );
+    // 2. Validação do Cliente
+    if (clientId) {
+      const clientExists = await this.prisma.client.findUnique({
+        where: { id: clientId },
+      });
+      if (!clientExists) {
+        throw new NotFoundException(`Cliente com ID ${clientId} não encontrado.`);
       }
     }
 
-    if (clientId) {
-      const clientExists = await this.prisma.client.findUnique({ where: { id: clientId } });
-      if (!clientExists) throw new NotFoundException(`Cliente com ID ${clientId} não encontrado.`);
-    }
-
-    // Cálculo do Total
+    // 3. Cálculo do Total
     let total = 0;
     const orderItemsData = items.map((item) => {
       const product = productsInDb.find((p) => p.id === item.productId);
-      if (!product) throw new BadRequestException(`Produto ${item.productId} erro.`);
-      
+      if (!product) {
+        throw new BadRequestException(`Produto com ID ${item.productId} não encontrado.`);
+      }
       const itemTotal = product.price * item.quantity;
       total += itemTotal;
 
@@ -56,32 +57,27 @@ export class OrdersService {
       };
     });
 
-    // Taxa de 6% (Cartão)
-    if (paymentMethod === PaymentMethodDto.CARTAO) {
-      total *= 1.06;
-    }
-
-    const methodForDb = paymentMethod as unknown as PaymentMethod;
-
+    // 4. Transação de Criação
     const newOrder = await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
-          userId, total, status: 'PENDENTE', observations,
-          clientId, deliveryDate, paymentMethod: methodForDb,
+          userId: userId,
+          total: total,
+          status: 'PENDENTE',
+          observations: observations,
+          clientId: clientId,
+          deliveryDate: deliveryDate,
+          // Salva o método de pagamento (cast para o tipo do Prisma)
+          paymentMethod: paymentMethod as PaymentMethod,
         },
       });
 
       await tx.orderItem.createMany({
-        data: orderItemsData.map((item) => ({ ...item, orderId: order.id })),
+        data: orderItemsData.map((item) => ({
+          ...item,
+          orderId: order.id,
+        })),
       });
-
-      // Desconta do DELIVERY
-      for (const item of items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stockDelivery: { decrement: item.quantity } },
-        });
-      }
 
       return tx.order.findUnique({
         where: { id: order.id },
@@ -89,8 +85,15 @@ export class OrdersService {
       });
     });
 
+    // Log de Auditoria da criação
     if (newOrder) {
-      await this.auditService.createLog(userId, 'CREATE', 'Order', newOrder.id, `Pedido criado. R$ ${total.toFixed(2)}`);
+      await this.auditService.createLog(
+        userId,
+        'CREATE',
+        'Order',
+        newOrder.id,
+        `Pedido criado. Total: R$ ${total}. Pagamento: ${paymentMethod || 'CASH'}`
+      );
     }
 
     return newOrder;
@@ -102,7 +105,9 @@ export class OrdersService {
       include: {
         user: { select: { name: true, email: true } },
         client: { select: { name: true, phone: true } },
-        items: { include: { product: { select: { name: true } } } }
+        items: {
+          include: { product: { select: { name: true } } }
+        }
       }
     });
   }
@@ -113,203 +118,67 @@ export class OrdersService {
       include: {
         user: { select: { name: true, email: true } },
         client: { select: { name: true, phone: true, address: true } },
-        items: { include: { product: { select: { name: true, price: true } } } }
+        items: {
+          include: { product: { select: { name: true, price: true } } }
+        }
       }
     });
   }
 
-  // --- ATUALIZAÇÃO COM EDIÇÃO DE ITENS E ESTOQUE ---
+  /**
+   * Atualiza um pedido e gera Log de Auditoria
+   */
   async update(id: number, updateOrderDto: UpdateOrderDto, userId: number) {
-    const currentOrder = await this.prisma.order.findUnique({
-      where: { id },
-      include: { items: true },
+    // 1. Busca dados antigos para comparar no log
+    const oldOrder = await this.prisma.order.findUnique({ where: { id } });
+
+    // 2. Atualiza
+    const updatedOrder = await this.prisma.order.update({
+      where: { id: id },
+      data: {
+        status: updateOrderDto.status,
+        clientId: updateOrderDto.clientId,
+        deliveryDate: updateOrderDto.deliveryDate,
+        observations: updateOrderDto.observations,
+        // Se quiser permitir alterar o pagamento depois, adicione paymentMethod aqui também
+      },
     });
 
-    if (!currentOrder) {
-      throw new NotFoundException(`Pedido #${id} não encontrado.`);
+    // 3. Gera mensagem do Log
+    let logMessage = 'Pedido atualizado.';
+    if (oldOrder && oldOrder.status !== updatedOrder.status) {
+      logMessage = `Status alterado de ${oldOrder.status} para ${updatedOrder.status}.`;
+    } else if (updateOrderDto.observations) {
+      logMessage = 'Observações atualizadas.';
     }
 
-    // Se não houver itens para atualizar, faz o update simples
-    if (!updateOrderDto.items) {
-      // Mas se o método de pagamento mudar, precisamos recalcular o total
-      let newTotal = currentOrder.total;
-      
-      // Se mudou de PIX/DINHEIRO para CARTAO -> Aplica taxa
-      // Se mudou de CARTAO para OUTRO -> Remove taxa
-      // Essa lógica simples pode falhar se o preço base não for guardado. 
-      // O ideal é recalcular tudo se houver mudança de pagamento.
-      // Para simplificar aqui: se mudar pagamento E não mandou itens, avisamos que é melhor editar os itens para recalcular.
-      // Ou assumimos que o frontend manda os itens sempre que quiser recalculo.
-      
-      const updatedOrder = await this.prisma.order.update({
-        where: { id },
-        data: {
-          status: updateOrderDto.status,
-          clientId: updateOrderDto.clientId,
-          deliveryDate: updateOrderDto.deliveryDate,
-          observations: updateOrderDto.observations,
-          // Não atualizamos total/pagamento aqui sem itens para evitar inconsistência
-        },
-      });
-      
-      await this.auditService.createLog(userId, 'UPDATE', 'Order', id, 'Pedido atualizado (Status/Dados).');
-      return updatedOrder;
-    }
+    // 4. Salva o Log
+    await this.auditService.createLog(userId, 'UPDATE', 'Order', id, logMessage);
 
-    // --- LÓGICA DE RECALCULO DE ITENS ---
-    return this.prisma.$transaction(async (tx) => {
-      const newItemsList = updateOrderDto.items || [];
-      const oldItemsList = currentOrder.items;
-      
-      let runningTotal = 0;
-
-      // Mapas para comparação rápida
-      // newItemsMap: ProductID -> Quantidade Nova
-      const newItemsMap = new Map(newItemsList.map(i => [i.productId, i.quantity]));
-      
-      // 1. Processar itens ANTIGOS (Remover ou Atualizar)
-      for (const oldItem of oldItemsList) {
-        const newQty = newItemsMap.get(oldItem.productId);
-
-        if (newQty === undefined) {
-          // REMOÇÃO: Item existia, mas não está na nova lista
-          // Devolve ao estoque
-          await tx.product.update({
-            where: { id: oldItem.productId },
-            data: { stockDelivery: { increment: oldItem.quantity } }
-          });
-          // Remove do pedido
-          await tx.orderItem.delete({ where: { id: oldItem.id } });
-        } else {
-          // ATUALIZAÇÃO: Item continua na lista
-          const diff = newQty - oldItem.quantity;
-
-          if (diff !== 0) {
-            // Se diff > 0: Cliente quer mais (tira do estoque)
-            // Se diff < 0: Cliente quer menos (devolve ao estoque)
-            
-            if (diff > 0) {
-              const product = await tx.product.findUnique({ where: { id: oldItem.productId } });
-              if (!product || product.stockDelivery < diff) {
-                throw new BadRequestException(`Estoque insuficiente para aumentar ${product?.name}.`);
-              }
-              await tx.product.update({
-                where: { id: oldItem.productId },
-                data: { stockDelivery: { decrement: diff } }
-              });
-            } else {
-              // Devolve a diferença (positivo)
-              await tx.product.update({
-                where: { id: oldItem.productId },
-                data: { stockDelivery: { increment: Math.abs(diff) } }
-              });
-            }
-
-            // Atualiza a quantidade no pedido
-            await tx.orderItem.update({
-              where: { id: oldItem.id },
-              data: { quantity: newQty }
-            });
-          }
-          
-          // Soma ao novo total (usando preço atual do produto para garantir valor correto)
-          const product = await tx.product.findUnique({ where: { id: oldItem.productId } });
-          if (product) {
-             runningTotal += product.price * newQty;
-          }
-          
-          // Remove do mapa para sabermos o que falta adicionar
-          newItemsMap.delete(oldItem.productId);
-        }
-      }
-
-      // 2. Processar itens NOVOS (Adições)
-      for (const [productId, qty] of newItemsMap.entries()) {
-        const product = await tx.product.findUnique({ where: { id: productId } });
-        if (!product) throw new BadRequestException(`Produto ${productId} não encontrado.`);
-        
-        if (product.stockDelivery < qty) {
-           throw new BadRequestException(`Estoque insuficiente para adicionar ${product.name}.`);
-        }
-
-        // Tira do estoque
-        await tx.product.update({
-          where: { id: productId },
-          data: { stockDelivery: { decrement: qty } }
-        });
-
-        // Cria o item
-        await tx.orderItem.create({
-          data: {
-            orderId: id,
-            productId: productId,
-            quantity: qty,
-            price: product.price
-          }
-        });
-
-        runningTotal += product.price * qty;
-      }
-
-      // 3. Aplica Taxa de Pagamento e Atualiza Pedido
-      const method = updateOrderDto.paymentMethod || currentOrder.paymentMethod;
-      
-      // Se for Cartão, +6%
-      if (method === 'CARTAO') {
-        runningTotal *= 1.06;
-      }
-
-      const updatedOrder = await tx.order.update({
-        where: { id },
-        data: {
-          total: runningTotal,
-          status: updateOrderDto.status,
-          clientId: updateOrderDto.clientId,
-          deliveryDate: updateOrderDto.deliveryDate,
-          observations: updateOrderDto.observations,
-          paymentMethod: method as any
-        },
-        include: { items: { include: { product: true } } }
-      });
-
-      await this.auditService.createLog(userId, 'UPDATE', 'Order', id, `Pedido editado. Novo total: R$ ${runningTotal.toFixed(2)}`);
-      
-      return updatedOrder;
-    });
+    return updatedOrder;
   }
 
+  /**
+   * Deleta um pedido e gera Log de Auditoria
+   */
   async remove(id: number, userId: number) {
+    // Busca dados antes de apagar para o log
     const orderToDelete = await this.prisma.order.findUnique({ where: { id } });
+
     await this.prisma.$transaction(async (tx) => {
       await tx.orderItem.deleteMany({ where: { orderId: id } });
-      await tx.order.delete({ where: { id } });
+      await tx.order.delete({ where: { id: id } });
     });
-    await this.auditService.createLog(userId, 'DELETE', 'Order', id, `Pedido de R$ ${orderToDelete?.total} deletado.`);
+
+    // Salva o Log após sucesso
+    await this.auditService.createLog(
+      userId,
+      'DELETE',
+      'Order',
+      id,
+      `Pedido de R$ ${orderToDelete?.total} deletado.`,
+    );
+
     return { message: 'Pedido deletado com sucesso' };
-  }
-
-  async getDeliveryStats() {
-    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(); endOfDay.setHours(23, 59, 59, 999);
-    
-
-    const ordersToday = await this.prisma.order.findMany({
-      where: {
-        createdAt: { gte: startOfDay, lte: endOfDay },
-        status: { not: 'CANCELADO' },
-      },
-      select: {
-        id: true, total: true, paymentMethod: true, createdAt: true
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const inventory = await this.prisma.product.findMany({
-      select: { id: true, name: true, stockKitchen: true, stockDelivery: true },
-      orderBy: { name: 'asc' },
-    });
-
-    return { orders: ordersToday, inventory };
   }
 }

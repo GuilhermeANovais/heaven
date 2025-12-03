@@ -1,5 +1,15 @@
 import {
-  Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, ParseIntPipe, Res, Query, // <--- Query IMPORTADO
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Request,
+  ParseIntPipe,
+  Res,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -27,21 +37,24 @@ export class OrdersController {
     return this.ordersService.findAll();
   }
 
-  @Get('delivery/daily')
-  getDeliveryStats() {
-    return this.ordersService.getDeliveryStats();
-  }
-
-  // --- AQUI ESTÁ A CORREÇÃO CRÍTICA ---
-  // Verifica se tens o @Query('type') aqui
+  // --- Endpoint de PDF ---
   @Get(':id/pdf')
   async getOrderPdf(
     @Param('id', ParseIntPipe) id: number,
-    @Query('type') type: 'receipt' | 'kitchen' = 'receipt', // Padrão 'receipt'
     @Res() res: Response,
   ) {
-    // Passa o tipo para o service
-    const { buffer, filename } = await this.pdfService.generatePdf(id, type);
+    // Desestrutura para pegar o HTML e os dados do pedido para o nome do arquivo
+    const { html, order } = await this.pdfService.generateOrderHtml(id);
+    
+    const pdfBuffer = await this.pdfService.generatePdfFromHtml(html);
+
+    // Formata a data para o nome do arquivo
+    const date = new Date(order.createdAt);
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    
+    // Limpa o nome do cliente
+    const clientName = (order.client?.name || 'Pedido_Interno').replace(/[^a-zA-Z0-9]/g, '_');
+    const filename = `pedido_${order.id}_${clientName}_${dateString}.pdf`;
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
@@ -49,7 +62,7 @@ export class OrdersController {
       `attachment; filename="${filename}"`,
     );
 
-    res.send(buffer);
+    res.send(pdfBuffer);
   }
 
   @Get(':id')
@@ -61,15 +74,17 @@ export class OrdersController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateOrderDto: UpdateOrderDto,
-    @Request() req: any,
+    @Request() req: any, // Pega o usuário logado
   ) {
     const userId = req.user.userId;
+    // Passa o userId para o serviço (3 argumentos)
     return this.ordersService.update(id, updateOrderDto, userId);
   }
 
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
     const userId = req.user.userId;
+    // Passa o userId para o serviço (2 argumentos)
     return this.ordersService.remove(id, userId);
   }
 }
