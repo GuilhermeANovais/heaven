@@ -20,5 +20,16 @@ export class ReportsController {
 
   @Get(':id/download')
   async downloadPdf(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const report = await this.reportsService.findOne(id);
+
+    // Configura os headers para indicar que é um ficheiro PDF para download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="relatorio_${report.month}_${report.year}.pdf"`,
+    );
+
+    // Envia o buffer do PDF que está na base de dados
+    res.send(report.pdfData);
   }
 }

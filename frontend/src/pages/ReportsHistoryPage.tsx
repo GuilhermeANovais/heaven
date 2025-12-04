@@ -4,7 +4,7 @@ import {
   TableContainer, TableHead, TableRow, IconButton, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem 
 } from '@mui/material';
-import { FileText, Download, PlusCircle } from 'lucide-react';
+import { Download, PlusCircle } from 'lucide-react';
 import api from '../api';
 
 interface Report {
@@ -21,8 +21,8 @@ export function ReportsHistoryPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [open, setOpen] = useState(false);
   
-  // Estado para o formulário de geração
-  const [month, setMonth] = useState(new Date().getMonth()); // Mês atual (0-11 no JS, mas vamos usar 1-12)
+  // Estado para o formulário de geração (Mês + 1 para ficar 1-12)
+  const [month, setMonth] = useState(new Date().getMonth() + 1); 
   const [year, setYear] = useState(new Date().getFullYear());
 
   const fetchReports = async () => {
@@ -50,6 +50,30 @@ export function ReportsHistoryPage() {
       alert('Relatório gerado com sucesso!');
     } catch (error) {
       alert('Erro ao gerar relatório.');
+    }
+  };
+
+  // Função responsável pelo download
+  const handleDownload = async (reportId: number, fileName: string) => {
+    try {
+      const response = await api.get(`/reports/${reportId}/download`, {
+        responseType: 'blob', // Importante: diz ao axios que é um ficheiro binário
+      });
+
+      // Cria um link temporário para forçar o download no browser
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpeza
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erro ao baixar PDF:', error);
+      alert('Não foi possível baixar o relatório.');
     }
   };
 
@@ -85,12 +109,15 @@ export function ReportsHistoryPage() {
                 <TableCell sx={{ fontWeight: 'bold' }}>
                   {String(row.month).padStart(2, '0')}/{row.year}
                 </TableCell>
+                
+                {/* Conversão Number() adicionada para evitar erro com Decimal/String */}
                 <TableCell align="right" sx={{ color: 'green' }}>
                   R$ {Number(row.totalRevenue).toFixed(2)}
                 </TableCell>
                 <TableCell align="right" sx={{ color: 'red' }}>
                   R$ {Number(row.totalExpenses).toFixed(2)}
                 </TableCell>
+                
                 <TableCell align="right">
                   <Chip 
                     label={`R$ ${Number(row.netProfit).toFixed(2)}`} 
@@ -99,11 +126,17 @@ export function ReportsHistoryPage() {
                     variant="outlined"
                   />
                 </TableCell>
+                
                 <TableCell align="right">
                   {new Date(row.createdAt).toLocaleDateString()}
                 </TableCell>
+                
                 <TableCell align="center">
-                  <IconButton color="primary" title="Baixar PDF">
+                  <IconButton 
+                    color="primary" 
+                    title="Baixar PDF"
+                    onClick={() => handleDownload(row.id, `relatorio_${row.month}_${row.year}.pdf`)}
+                  >
                     <Download size={20} />
                   </IconButton>
                 </TableCell>

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PdfService } from 'src/pdf/pdf.service';
 
@@ -8,6 +8,14 @@ export class ReportsService {
     private prisma: PrismaService,
     private pdfService: PdfService, // <--- Injetar o serviço de PDF
   ) {}
+
+  async findOne(id: number) {
+    const report = await this.prisma.monthlyReport.findUnique({
+      where: { id },
+    });
+    if (!report) throw new NotFoundException('Relatório não encontrado.');
+    return report;
+  }
 
   async findAll() {
     return this.prisma.monthlyReport.findMany({
