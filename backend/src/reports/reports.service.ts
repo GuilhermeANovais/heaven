@@ -11,7 +11,10 @@ export class ReportsService {
 
   async findAll() {
     return this.prisma.monthlyReport.findMany({
-      orderBy: { year: 'desc', month: 'desc' } as any, // Ajuste conforme a versão do prisma
+      orderBy: [
+        { year: 'desc' },
+        { month: 'desc' }
+      ]
     });
   }
 
@@ -44,8 +47,9 @@ export class ReportsService {
       }
     });
 
-    const revenue = salesAgg._sum.total || 0;
-    const expenses = expensesAgg._sum.amount || 0;
+    // CORREÇÃO: Converter para Number
+    const revenue = Number(salesAgg._sum.total || 0);
+    const expenses = Number(expensesAgg._sum.amount || 0);
     const profit = revenue - expenses;
 
     // 5. Gerar PDF
@@ -61,12 +65,6 @@ export class ReportsService {
     `;
 
     const pdfBuffer = await this.pdfService.generatePdfFromHtml(htmlContent);
-
-    // 6. Salvar (Usamos upsert para substituir se já existir)
-    // Precisamos encontrar um jeito de identificar unicamente. 
-    // Como o prisma não tem 'upsert' fácil sem @unique composto no schema, vamos tentar deletar e criar.
-    
-    // Remove se já existir um relatório desse mês/ano
     await this.prisma.monthlyReport.deleteMany({
       where: { month, year }
     });

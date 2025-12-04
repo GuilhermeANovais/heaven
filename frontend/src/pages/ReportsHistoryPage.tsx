@@ -86,14 +86,14 @@ export function ReportsHistoryPage() {
                   {String(row.month).padStart(2, '0')}/{row.year}
                 </TableCell>
                 <TableCell align="right" sx={{ color: 'green' }}>
-                  R$ {row.totalRevenue.toFixed(2)}
+                  R$ {Number(row.totalRevenue).toFixed(2)}
                 </TableCell>
                 <TableCell align="right" sx={{ color: 'red' }}>
-                  R$ {row.totalExpenses.toFixed(2)}
+                  R$ {Number(row.totalExpenses).toFixed(2)}
                 </TableCell>
                 <TableCell align="right">
                   <Chip 
-                    label={`R$ ${row.netProfit.toFixed(2)}`} 
+                    label={`R$ ${Number(row.netProfit).toFixed(2)}`} 
                     color={row.netProfit >= 0 ? 'success' : 'error'} 
                     size="small" 
                     variant="outlined"

@@ -75,7 +75,7 @@ export class PdfService {
     const itemsHtml = order.items.map(item => `
       <div class="item-row">
         <div class="item-name">${item.quantity}x ${item.product.name}</div>
-        <div class="item-price">R$ ${(item.quantity * item.price).toFixed(2)}</div>
+        <div class="item-price">R$ ${(item.quantity * Number(item.price)).toFixed(2)}</div>
       </div>
     `).join('');
 
@@ -127,8 +127,8 @@ export class PdfService {
       <tr>
         <td>${item.product.name}</td>
         <td style="text-align: center;">${item.quantity}</td>
-        <td style="text-align: right;">R$ ${item.price.toFixed(2)}</td>
-        <td style="text-align: right;">R$ ${(item.quantity * item.price).toFixed(2)}</td>
+        <td style="text-align: right;">R$ ${Number(item.price).toFixed(2)}</td>
+        <td style="text-align: right;">R$ ${(item.quantity * Number(item.price)).toFixed(2)}</td>
       </tr>
     `).join('');
 

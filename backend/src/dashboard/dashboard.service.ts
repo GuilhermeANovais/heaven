@@ -115,8 +115,9 @@ export class DashboardService {
       }
     });
 
-    const revenueMonth = salesAgg._sum.total || 0;
-    const expensesMonth = expensesAgg._sum.amount || 0;
+    // CORREÇÃO: Converter para Number() para permitir subtração
+    const revenueMonth = Number(salesAgg._sum.total || 0);
+    const expensesMonth = Number(expensesAgg._sum.amount || 0);
 
     return { 
       revenueMonth, 

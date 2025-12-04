@@ -46,8 +46,9 @@ export class TasksService {
       }
     });
 
-    const revenue = salesAgg._sum.total || 0;
-    const expenses = expensesAgg._sum.amount || 0;
+    // CORREÇÃO: Converter para Number
+    const revenue = Number(salesAgg._sum.total || 0);
+    const expenses = Number(expensesAgg._sum.amount || 0);
     const profit = revenue - expenses;
 
     // 4. Gerar o HTML do Relatório (Você precisará criar esse método no PdfService)

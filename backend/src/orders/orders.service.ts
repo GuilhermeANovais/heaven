@@ -33,7 +33,11 @@ export class OrdersService {
     const orderItemsData = items.map((item) => {
       const product = productsInDb.find((p) => p.id === item.productId);
       if (!product) throw new BadRequestException(`Produto erro.`);
-      total += product.price * item.quantity;
+      
+      // CORREÇÃO: Converter product.price para Number
+      const priceAsNumber = Number(product.price);
+      total += priceAsNumber * item.quantity;
+      
       return { productId: item.productId, quantity: item.quantity, price: product.price };
     });
 
