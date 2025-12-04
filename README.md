@@ -1,5 +1,12 @@
 # 🍰 Dashboard de Confeitaria
 
+![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
+![Repo Size](https://img.shields.io/github/repo-size/GuilhermeANovais/heaven?style=flat-square)
+![Last Commit](https://img.shields.io/github/last-commit/GuilhermeANovais/heaven?style=flat-square)
+![Language](https://img.shields.io/github/languages/top/GuilhermeANovais/heaven?style=flat-square)
+![Prisma](https://img.shields.io/badge/Prisma-6.19.0-2D3748?style=flat-square&logo=prisma&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?logo=supabase&logoColor=white)
+
 Um sistema completo para gerenciamento de uma confeitaria, permitindo o controle de **clientes**, **pedidos**, **produtos** e **autenticação**.  
 O projeto é composto por um **backend em NestJS + Prisma** e um **frontend em Vite + TypeScript**.
 
