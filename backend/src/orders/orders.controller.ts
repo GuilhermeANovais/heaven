@@ -51,6 +51,11 @@ export class OrdersController {
     return this.ordersService.update(id, updateOrderDto, req.user.userId);
   }
 
+  @Delete('delete-all')
+  removeAll(@Request() req: any) {
+    return this.ordersService.removeAll(req.user.userId);
+  }
+
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
     return this.ordersService.remove(id, req.user.userId);

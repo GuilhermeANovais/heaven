@@ -130,4 +130,15 @@ export class OrdersService {
     await this.auditService.createLog(userId, 'DELETE', 'Order', id, 'Pedido deletado.');
     return { message: 'Sucesso' };
   }
+
+  async removeAll(userId: number) {
+    // Usamos transaction para garantir que apaga itens e pedidos ou nada
+    const count = await this.prisma.$transaction(async (tx) => {
+      await tx.orderItem.deleteMany({});
+      return tx.order.deleteMany({});
+    });
+
+    await this.auditService.createLog(userId, 'DELETE_ALL', 'Order', 0, `Limpou ${count.count} pedidos.`);
+    return { message: `Foram removidos ${count.count} pedidos.` };
+  }
 }

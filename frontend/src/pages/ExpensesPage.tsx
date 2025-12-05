@@ -1,7 +1,9 @@
+// src/pages/ExpensesPage.tsx
 import { Box, Typography, Button, IconButton, Snackbar, Alert, Paper, Chip } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Plus, Trash2, Pencil } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // <--- React Query
 import api from '../api';
 import { ExpenseModal } from '../components/ExpenseModal';
 
@@ -21,11 +23,34 @@ type SnackbarState = {
 } | null;
 
 export function ExpensesPage() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [openModal, setOpenModal] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null);
   const [snackbar, setSnackbar] = useState<SnackbarState>(null);
+
+  // 1. FETCHING COM REACT QUERY
+  const { data: expenses = [], isLoading } = useQuery({
+    queryKey: ['expenses'],
+    queryFn: async () => {
+      const response = await api.get<Expense[]>('/expenses');
+      return response.data;
+    },
+    staleTime: 1000 * 60 * 5, // Cache de 5 minutos
+  });
+
+  // 2. MUTATION: DELETAR DESPESA
+  const deleteExpenseMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/expenses/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      setSnackbar({ open: true, message: 'Despesa deletada com sucesso!', severity: 'success' });
+    },
+    onError: () => {
+      setSnackbar({ open: true, message: 'Erro ao deletar despesa.', severity: 'error' });
+    }
+  });
 
   const handleOpenModal = (expense: Expense | null) => {
     setExpenseToEdit(expense);
@@ -37,33 +62,13 @@ export function ExpensesPage() {
     setExpenseToEdit(null);
   };
 
-  async function fetchExpenses() {
-    setLoading(true);
-    try {
-      const response = await api.get('/expenses');
-      setExpenses(response.data);
-    } catch (error) {
-      console.error("Erro ao buscar despesas:", error);
-      setSnackbar({ open: true, message: 'Erro ao buscar despesas.', severity: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleDelete(id: number) {
+  const handleDelete = (id: number) => {
     if (window.confirm("Tem certeza que deseja deletar esta despesa?")) {
-      try {
-        await api.delete(`/expenses/${id}`);
-        fetchExpenses(); 
-        setSnackbar({ open: true, message: 'Despesa deletada com sucesso!', severity: 'success' });
-      } catch (error) {
-        console.error("Erro ao deletar:", error);
-        setSnackbar({ open: true, message: 'Erro ao deletar despesa.', severity: 'error' });
-      }
+      deleteExpenseMutation.mutate(id);
     }
-  }
+  };
 
-  const columns: GridColDef[] = [
+  const columns = useMemo((): GridColDef[] => [
     { 
       field: 'date', 
       headerName: 'Data', 
@@ -86,7 +91,8 @@ export function ExpensesPage() {
       type: 'number',
       renderCell: (params) => (
         <Typography fontWeight="bold" color="error.main">
-          - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(params.value)}
+          {/* Adicionei Number() para garantir segurança com Decimals */}
+          - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(params.value))}
         </Typography>
       )
     },
@@ -106,11 +112,7 @@ export function ExpensesPage() {
         </Box>
       ),
     },
-  ];
-
-  useEffect(() => {
-    fetchExpenses();
-  }, []);
+  ], []);
 
   return (
     <Box sx={{ height: '100%', width: '100%' }}>
@@ -120,7 +122,7 @@ export function ExpensesPage() {
         </Typography>
         <Button
           variant="contained"
-          color="error" // Botão vermelho para indicar saída de dinheiro
+          color="error" // Mantive o vermelho para indicar saída
           startIcon={<Plus size={20} strokeWidth={1.5} />}
           onClick={() => handleOpenModal(null)}
           sx={{ textTransform: 'none', borderRadius: 2 }}
@@ -136,7 +138,7 @@ export function ExpensesPage() {
         <DataGrid
           rows={expenses}
           columns={columns}
-          loading={loading}
+          loading={isLoading}
           initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
           pageSizeOptions={[10, 20]}
           sx={{ border: 'none' }}
@@ -146,7 +148,8 @@ export function ExpensesPage() {
       <ExpenseModal
         open={openModal}
         handleClose={handleCloseModal}
-        onSave={fetchExpenses}
+        // Invalida o cache ao salvar para atualizar a tabela
+        onSave={() => queryClient.invalidateQueries({ queryKey: ['expenses'] })}
         expenseToEdit={expenseToEdit}
         setSnackbar={setSnackbar}
       />

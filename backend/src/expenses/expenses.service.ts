@@ -55,4 +55,10 @@ export class ExpensesService {
       where: { id },
     });
   }
+
+  async removeAll(userId: number) {
+    const count = await this.prisma.expense.deleteMany({});
+    // Se tiver AuditService, adicione o log aqui
+    return { message: `Foram removidas ${count.count} despesas.` };
+  }
 }

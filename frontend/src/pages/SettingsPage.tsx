@@ -1,116 +1,145 @@
-import { Box, Typography, TextField, Button, Paper, Snackbar, Alert, Divider } from '@mui/material';
-import { Save, UserCog } from 'lucide-react'; // Ícones
+import { 
+  Box, Typography, Paper, Button, Divider, Alert, 
+  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
+  CircularProgress
+} from '@mui/material';
+import { Trash2, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
-import { useForm, SubmitHandler } from 'react-hook-form';
 import api from '../api';
-
-type SettingsFormInputs = {
-  name: string;
-  password?: string;
-  confirmPassword?: string;
-};
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function SettingsPage() {
-  const { register, handleSubmit, setError, reset, formState: { errors } } = useForm<SettingsFormInputs>();
-  const [snackbar, setSnackbar] = useState<{ open: boolean, message: string, severity: 'success' | 'error' } | null>(null);
+  const queryClient = useQueryClient();
+  const [openDialog, setOpenDialog] = useState(false);
+  const [targetAction, setTargetAction] = useState<'orders' | 'expenses' | null>(null);
 
-  const onSubmit: SubmitHandler<SettingsFormInputs> = async (data) => {
-    // Validação de senha
-    if (data.password && data.password !== data.confirmPassword) {
-      setError('confirmPassword', { type: 'manual', message: 'As senhas não coincidem' });
-      return;
+  // Mutation genérica para limpeza
+  const clearDataMutation = useMutation({
+    mutationFn: async (type: 'orders' | 'expenses') => {
+      // Chama o endpoint correspondente
+      const endpoint = type === 'orders' ? '/orders/delete-all' : '/expenses/delete-all';
+      await api.delete(endpoint);
+    },
+    onSuccess: () => {
+      // Atualiza caches e fecha dialog
+      if (targetAction === 'orders') queryClient.invalidateQueries({ queryKey: ['orders'] });
+      if (targetAction === 'expenses') queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      
+      handleCloseDialog();
+      alert('Dados limpos com sucesso!');
+    },
+    onError: () => {
+      alert('Erro ao limpar dados. Tente novamente.');
+      handleCloseDialog();
     }
+  });
 
-    const updateData: any = {};
-    if (data.name) updateData.name = data.name;
-    if (data.password) updateData.password = data.password;
+  const handleOpenDialog = (action: 'orders' | 'expenses') => {
+    setTargetAction(action);
+    setOpenDialog(true);
+  };
 
-    try {
-      await api.patch('/users/profile', updateData);
-      setSnackbar({ open: true, message: 'Perfil atualizado com sucesso!', severity: 'success' });
-      reset({ name: data.name, password: '', confirmPassword: '' }); // Limpa senhas
-    } catch (error) {
-      console.error("Erro ao atualizar:", error);
-      setSnackbar({ open: true, message: 'Erro ao atualizar perfil.', severity: 'error' });
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setTargetAction(null);
+  };
+
+  const handleConfirm = () => {
+    if (targetAction) {
+      clearDataMutation.mutate(targetAction);
     }
   };
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', mt: 4 }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1a1a1a', mb: 4 }}>
+    <Box sx={{ maxWidth: 800, margin: '0 auto', pt: 2 }}>
+      <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 4 }}>
         Configurações
       </Typography>
 
-      <Paper elevation={0} sx={{ p: 4, border: '1px solid #e0e0e0', borderRadius: 3, bgcolor: 'white' }}>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-          <Box sx={{ p: 1.5, bgcolor: '#e8f5e9', borderRadius: '50%', color: '#1B5E20' }}>
-            <UserCog size={24} />
-          </Box>
-          <Box>
-            <Typography variant="h6" fontWeight={600}>Perfil do Usuário</Typography>
-            <Typography variant="body2" color="text.secondary">Atualize suas informações de acesso</Typography>
-          </Box>
-        </Box>
-
-        <Divider sx={{ mb: 4 }} />
-
-        <Box component="form" onSubmit={handleSubmit(onSubmit)}>
-          <TextField
-            label="Novo Nome (Opcional)"
-            fullWidth
-            margin="normal"
-            {...register("name")}
-            helperText="Deixe em branco para manter o atual"
-          />
-
-          <Typography variant="subtitle2" sx={{ mt: 3, mb: 1, fontWeight: 600, color: '#374151' }}>
-            Alterar Senha
+      <Paper elevation={0} sx={{ p: 4, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, color: '#d32f2f' }}>
+          <ShieldAlert size={32} />
+          <Typography variant="h6" fontWeight="bold">
+            Zona de Perigo
           </Typography>
+        </Box>
+        
+        <Alert severity="warning" sx={{ mb: 4 }}>
+          As ações abaixo são irreversíveis. Tenha certeza absoluta antes de prosseguir.
+        </Alert>
 
-          <TextField
-            label="Nova Senha"
-            type="password"
-            fullWidth
-            margin="normal"
-            {...register("password", { minLength: { value: 6, message: "Mínimo de 6 caracteres" } })}
-            error={!!errors.password}
-            helperText={errors.password?.message}
-          />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {/* Limpar Pedidos */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="subtitle1" fontWeight="bold">Limpar todos os Pedidos</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Apaga permanentemente todo o histórico de pedidos e itens vendidos.
+              </Typography>
+            </Box>
+            <Button 
+              variant="outlined" 
+              color="error" 
+              startIcon={<Trash2 size={18} />}
+              onClick={() => handleOpenDialog('orders')}
+            >
+              Limpar Pedidos
+            </Button>
+          </Box>
 
-          <TextField
-            label="Confirmar Nova Senha"
-            type="password"
-            fullWidth
-            margin="normal"
-            {...register("confirmPassword")}
-            error={!!errors.confirmPassword}
-            helperText={errors.confirmPassword?.message}
-          />
+          <Divider />
 
-          <Button
-            type="submit"
-            variant="contained"
-            size="large"
-            fullWidth
-            startIcon={<Save size={20} />}
-            sx={{ mt: 4, borderRadius: 2, py: 1.5 }}
-          >
-            Salvar Alterações
-          </Button>
+          {/* Limpar Despesas */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="subtitle1" fontWeight="bold">Limpar todas as Despesas</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Apaga permanentemente todo o registro de saídas e custos.
+              </Typography>
+            </Box>
+            <Button 
+              variant="outlined" 
+              color="error" 
+              startIcon={<Trash2 size={18} />}
+              onClick={() => handleOpenDialog('expenses')}
+            >
+              Limpar Despesas
+            </Button>
+          </Box>
         </Box>
       </Paper>
 
-      {snackbar && (
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={() => setSnackbar(null)}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        >
-          <Alert severity={snackbar.severity} sx={{ width: '100%' }}>{snackbar.message}</Alert>
-        </Snackbar>
-      )}
+      {/* Dialog de Confirmação */}
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+      >
+        <DialogTitle sx={{ color: '#d32f2f', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <ShieldAlert size={24} />
+          Confirmação de Exclusão
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Tem certeza absoluta que deseja apagar <b>TODOS</b> os {targetAction === 'orders' ? 'pedidos' : 'registros de despesas'}?
+            <br /><br />
+            Esta ação não pode ser desfeita e os dados serão perdidos para sempre.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleCloseDialog} color="inherit">
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleConfirm} 
+            color="error" 
+            variant="contained" 
+            autoFocus
+            disabled={clearDataMutation.isPending}
+          >
+            {clearDataMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Sim, Apagar Tudo'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

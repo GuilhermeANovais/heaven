@@ -1,9 +1,9 @@
 // src/pages/ProductsPage.tsx
 import { Box, Typography, Button, IconButton, Snackbar, Alert, Paper } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-// 1. Novos ícones Lucide
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // <--- React Query
 import api from '../api';
 import { ProductModal } from '../components/ProductModal';
 
@@ -22,11 +22,34 @@ type SnackbarState = {
 } | null;
 
 export function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const queryClient = useQueryClient();
   const [openModal, setOpenModal] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [snackbar, setSnackbar] = useState<SnackbarState>(null);
-  const [loading, setLoading] = useState(true);
+
+  // 1. FETCHING COM REACT QUERY
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['products'],
+    queryFn: async () => {
+      const response = await api.get<Product[]>('/products');
+      return response.data;
+    },
+    staleTime: 1000 * 60 * 5, // Cache de 5 minutos
+  });
+
+  // 2. MUTATION: DELETAR PRODUTO
+  const deleteProductMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/products/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setSnackbar({ open: true, message: 'Produto deletado com sucesso!', severity: 'success' });
+    },
+    onError: () => {
+      setSnackbar({ open: true, message: 'Erro ao deletar produto.', severity: 'error' });
+    }
+  });
 
   const handleOpenModal = (product: Product | null) => {
     setProductToEdit(product);
@@ -38,37 +61,18 @@ export function ProductsPage() {
     setProductToEdit(null);
   };
 
-  async function fetchProducts() {
-    setLoading(true);
-    try {
-      const response = await api.get('/products');
-      setProducts(response.data);
-    } catch (error) {
-      console.error("Erro ao buscar produtos:", error);
-      setSnackbar({ open: true, message: 'Erro ao buscar produtos.', severity: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleDelete(id: number) {
+  const handleDelete = (id: number) => {
     if (window.confirm("Tem certeza que deseja deletar este produto?")) {
-      try {
-        await api.delete(`/products/${id}`);
-        fetchProducts(); 
-        setSnackbar({ open: true, message: 'Produto deletado com sucesso!', severity: 'success' });
-      } catch (error) {
-        console.error("Erro ao deletar produto:", error);
-        setSnackbar({ open: true, message: 'Erro ao deletar produto.', severity: 'error' });
-      }
+      deleteProductMutation.mutate(id);
     }
-  }
+  };
 
   const handleCloseSnackbar = () => {
     setSnackbar(null);
   };
 
-  const columns: GridColDef[] = [
+  // Colunas
+  const columns = useMemo((): GridColDef[] => [
     { field: 'name', headerName: 'Nome', width: 200 },
     { 
       field: 'price', 
@@ -77,7 +81,8 @@ export function ProductsPage() {
       type: 'number',
       valueFormatter: (value) => {
         if (value == null) return '';
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        // Proteção: Converter para Number() caso venha string do backend
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value));
       }
     },
     { field: 'description', headerName: 'Descrição', flex: 1 },
@@ -89,7 +94,6 @@ export function ProductsPage() {
       renderCell: (params) => {
         return (
           <Box>
-            {/* Botão Editar */}
             <IconButton 
               onClick={() => handleOpenModal(params.row)}
               color="primary"
@@ -97,7 +101,6 @@ export function ProductsPage() {
               <Pencil size={18} strokeWidth={1.5} />
             </IconButton>
             
-            {/* Botão Deletar */}
             <IconButton 
               onClick={() => handleDelete(params.row.id)} 
               color="error"
@@ -108,11 +111,7 @@ export function ProductsPage() {
         );
       },
     },
-  ];
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  ], []);
 
   return (
     <Box sx={{ height: '100%', width: '100%' }}>
@@ -123,7 +122,6 @@ export function ProductsPage() {
         <Button
           variant="contained"
           color="primary"
-          // Ícone Plus
           startIcon={<Plus size={20} strokeWidth={1.5} />}
           onClick={() => handleOpenModal(null)}
           sx={{ textTransform: 'none', borderRadius: 2 }}
@@ -132,7 +130,6 @@ export function ProductsPage() {
         </Button>
       </Box>
 
-      {/* Container da Tabela com estilo Flat */}
       <Paper 
         elevation={0} 
         sx={{ 
@@ -146,19 +143,20 @@ export function ProductsPage() {
         <DataGrid
           rows={products}
           columns={columns}
-          loading={loading}
+          loading={isLoading}
           initialState={{
             pagination: { paginationModel: { pageSize: 10 } },
           }}
           pageSizeOptions={[10, 20]}
-          sx={{ border: 'none' }} // Remove a borda interna da DataGrid para usar a do Paper
+          sx={{ border: 'none' }}
         />
       </Paper>
 
       <ProductModal
         open={openModal}
         handleClose={handleCloseModal}
-        onSave={fetchProducts}
+        // Ao salvar, invalidamos o cache para recarregar a lista automaticamente
+        onSave={() => queryClient.invalidateQueries({ queryKey: ['products'] })}
         productToEdit={productToEdit}
         setSnackbar={setSnackbar}
       />

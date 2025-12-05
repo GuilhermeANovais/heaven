@@ -37,6 +37,12 @@ export class ExpensesController {
     return this.expensesService.update(id, updateExpenseDto);
   }
 
+  @Delete('delete-all')
+  removeAll(@Request() req: any) {
+    // Passando o ID do usuário caso implemente auditoria
+    return this.expensesService.removeAll(req.user?.userId || 0); 
+  }
+
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.expensesService.remove(id);
