@@ -5,9 +5,10 @@ import {
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Plus, Eye, Trash2, Pencil, Printer, ChefHat } from 'lucide-react';
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import api from '../api';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // <--- Importações Novas
+import api from '../api';
 import { OrderDetailsModal } from '../components/OrderDetailsModal';
 import { EditOrderModal } from '../components/EditOrderModal';
 import { OrderSummary } from '../types/entities';
@@ -18,93 +19,92 @@ type SnackbarState = {
   severity: 'success' | 'error';
 } | null;
 
-// Interface estendida localmente caso entities.ts não tenha deliveryDate
 interface OrderWithDelivery extends OrderSummary {
   deliveryDate?: string | null;
 }
 
 export function OrdersPage() {
-  const [orders, setOrders] = useState<OrderWithDelivery[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [snackbar, setSnackbar] = useState<SnackbarState>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient(); // <--- Necessário para atualizar a lista após ações
+  const [snackbar, setSnackbar] = useState<SnackbarState>(null);
 
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  
-  // Estados para edição
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [orderToEdit, setOrderToEdit] = useState<OrderWithDelivery | null>(null);
 
-  const fetchOrders = useCallback(async () => {
-    setLoading(true);
-    try {
+  // --- 1. FETCHING COM REACT QUERY ---
+  // Substitui useEffect, useState(orders) e useState(loading)
+  const { data: orders = [], isLoading } = useQuery({
+    queryKey: ['orders'], // Chave única para o cache
+    queryFn: async () => {
       const response = await api.get<OrderWithDelivery[]>('/orders');
-      setOrders(response.data);
-    } catch (error) {
-      console.error("Erro ao buscar pedidos:", error);
-      setSnackbar({ open: true, message: 'Erro ao buscar pedidos.', severity: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return response.data;
+    },
+    // Opcional: Recarregar a cada 30 segundos automaticamente
+    refetchInterval: 30000, 
+  });
 
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
-
-  const handleStatusChange = useCallback(async (id: number, newStatus: string) => {
-    try {
+  // --- 2. MUTATION: ATUALIZAR STATUS ---
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, newStatus }: { id: number; newStatus: string }) => {
       await api.patch(`/orders/${id}`, { status: newStatus });
-      fetchOrders(); 
+    },
+    onSuccess: () => {
+      // Magia: invalida o cache 'orders' e força um refetch automático
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
       setSnackbar({ open: true, message: 'Status atualizado com sucesso!', severity: 'success' });
-    } catch (error) {
-      console.error("Erro ao atualizar status:", error);
+    },
+    onError: () => {
       setSnackbar({ open: true, message: 'Erro ao atualizar status.', severity: 'error' });
     }
-  }, [fetchOrders]);
+  });
 
-  const handleDeleteOrder = useCallback(async (id: number) => {
-    if (window.confirm('Tem certeza que deseja deletar este pedido? Esta ação não pode ser desfeita.')) {
-      try {
-        await api.delete(`/orders/${id}`);
-        fetchOrders();
-        setSnackbar({ open: true, message: 'Pedido deletado com sucesso!', severity: 'success' });
-      } catch (error) {
-        console.error("Erro ao deletar pedido:", error);
-        setSnackbar({ open: true, message: 'Erro ao deletar pedido.', severity: 'error' });
-      }
+  // --- 3. MUTATION: DELETAR PEDIDO ---
+  const deleteOrderMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/orders/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setSnackbar({ open: true, message: 'Pedido deletado com sucesso!', severity: 'success' });
+    },
+    onError: () => {
+      setSnackbar({ open: true, message: 'Erro ao deletar pedido.', severity: 'error' });
     }
-  }, [fetchOrders]);
+  });
 
-  // --- Função de Impressão (Atualizada para suportar tipos) ---
+  // Handlers simplificados (agora chamam .mutate)
+  const handleStatusChange = (id: number, newStatus: string) => {
+    updateStatusMutation.mutate({ id, newStatus });
+  };
+
+  const handleDeleteOrder = (id: number) => {
+    if (window.confirm('Tem certeza que deseja deletar este pedido? Esta ação não pode ser desfeita.')) {
+      deleteOrderMutation.mutate(id);
+    }
+  };
+
+  // --- Função de Impressão (Mantida igual, pois é uma ação direta sem side-effect no cache) ---
   const handlePrint = async (id: number, type: 'receipt' | 'kitchen') => {
     try {
-      // 1. Pede o PDF como BLOB, passando o tipo na Query String
       const response = await api.get(`/orders/${id}/pdf?type=${type}`, { responseType: 'blob' });
-      
-      // 2. Cria um URL temporário
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       
-      // 3. Cria um iframe invisível para processar a impressão
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       iframe.src = url;
       document.body.appendChild(iframe);
 
-      // 4. Manda imprimir assim que carregar
       iframe.onload = () => {
         if (iframe.contentWindow) {
           iframe.contentWindow.focus();
           iframe.contentWindow.print();
         }
-        
-        // Limpeza após 1 minuto
         setTimeout(() => {
             document.body.removeChild(iframe);
             window.URL.revokeObjectURL(url);
         }, 60000); 
       };
-
     } catch (error) {
       console.error("Erro ao imprimir:", error);
       setSnackbar({ open: true, message: 'Erro ao gerar impressão.', severity: 'error' });
@@ -112,17 +112,14 @@ export function OrdersPage() {
   };
 
   const handleViewDetails = (id: number) => setSelectedOrderId(id);
-  const handleCloseDetailsModal = () => setSelectedOrderId(null);
-  
   const handleEditOrder = (order: OrderWithDelivery) => {
     setOrderToEdit(order);
     setEditModalOpen(true);
   };
-
   const handleCloseSnackbar = () => setSnackbar(null);
   const handleNewOrder = () => navigate('/orders/new');
 
-  // --- Colunas ---
+  // Colunas
   const columns = useMemo((): GridColDef<OrderWithDelivery>[] => [
     { field: 'id', headerName: 'ID', width: 70 },
     {
@@ -183,15 +180,13 @@ export function OrdersPage() {
     {
       field: 'actions',
       headerName: 'Ações',
-      width: 280, // Largura aumentada para caber 2 botões de print + outros
+      width: 280,
       sortable: false,
       renderCell: (params) => {
         const statusValue = ['PENDENTE', 'CONCLUÍDO', 'CANCELADO', 'SINAL PAGO'].includes(params.row.status) ? params.row.status : 'PENDENTE';
         
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-             
-             {/* 1. Botão Cupom (Térmica - 80mm) */}
              <IconButton
               color="primary"
               size="small"
@@ -201,17 +196,15 @@ export function OrdersPage() {
               <Printer size={18} strokeWidth={1.5} />
             </IconButton>
 
-            {/* 2. Botão Cozinha (A4 Completo) */}
             <IconButton
               size="small"
-              sx={{ color: '#e65100' }} // Cor Laranja
+              sx={{ color: '#e65100' }}
               onClick={() => handlePrint(params.row.id, 'kitchen')}
               title="Pedido Completo (A4 - Cozinha)"
             >
               <ChefHat size={18} strokeWidth={1.5} />
             </IconButton>
 
-            {/* Ver Detalhes */}
             <IconButton
               color="default"
               size="small"
@@ -220,7 +213,6 @@ export function OrdersPage() {
               <Eye size={18} strokeWidth={1.5} />
             </IconButton>
 
-            {/* Editar */}
             <IconButton
               color="primary"
               size="small"
@@ -229,7 +221,6 @@ export function OrdersPage() {
               <Pencil size={18} strokeWidth={1.5} />
             </IconButton>
 
-            {/* Select Rápido de Status */}
             <Select
               value={statusValue}
               onChange={(e: SelectChangeEvent) => handleStatusChange(params.row.id, e.target.value)}
@@ -241,7 +232,6 @@ export function OrdersPage() {
               <MenuItem value="CANCELADO">Canc.</MenuItem>
             </Select>
 
-            {/* Deletar */}
             <IconButton
               color="error"
               size="small"
@@ -253,7 +243,7 @@ export function OrdersPage() {
         );
       },
     },
-  ], [handleStatusChange, handleDeleteOrder]);
+  ], []); // Dependências vazias pois as funções agora são estáveis (mutate)
 
   return (
     <Box sx={{ height: '100%', width: '100%' }}>
@@ -285,7 +275,7 @@ export function OrdersPage() {
         <DataGrid
           rows={orders}
           columns={columns}
-          loading={loading}
+          loading={isLoading} // React Query gere isto para nós
           initialState={{
             pagination: { paginationModel: { pageSize: 10 } },
           }}
@@ -296,14 +286,15 @@ export function OrdersPage() {
 
       <OrderDetailsModal
         open={selectedOrderId !== null}
-        handleClose={handleCloseDetailsModal}
+        handleClose={() => setSelectedOrderId(null)}
         orderId={selectedOrderId}
       />
 
       <EditOrderModal 
         open={editModalOpen}
         handleClose={() => setEditModalOpen(false)}
-        onSave={fetchOrders}
+        // Atualiza a lista ao salvar (invalida cache)
+        onSave={() => queryClient.invalidateQueries({ queryKey: ['orders'] })}
         order={orderToEdit}
         setSnackbar={setSnackbar}
       />

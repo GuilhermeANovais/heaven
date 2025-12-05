@@ -6,14 +6,13 @@ import {
   TriangleAlert, Package, Users, DollarSign, Timer, 
   TrendingDown, Wallet 
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query'; // <--- Importação do React Query
 import api from '../api';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
-// NOVO: Importa o Mural
 import { NoticeBoard } from '../components/NoticeBoard';
 
 // --- Interfaces ---
@@ -77,26 +76,30 @@ const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 export function DashboardPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const response = await api.get('/dashboard/stats');
-        setStats(response.data);
-      } catch (error) {
-        console.error("Erro ao buscar estatísticas:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchStats();
-  }, []);
+  // --- REFACTOR REACT QUERY ---
+  // Substitui useState e useEffect por uma única linha poderosa
+  const { data: stats, isLoading, isError } = useQuery({
+    queryKey: ['dashboard-stats'], // Identificador único do cache
+    queryFn: async () => {
+      const response = await api.get<Stats>('/dashboard/stats');
+      return response.data;
+    },
+    refetchInterval: 60000, // Atualiza automaticamente a cada 1 minuto (Dashboard "Vivo")
+    staleTime: 30000, // Considera os dados frescos por 30s antes de tentar buscar de novo ao focar a janela
+  });
 
-  if (loading) {
+  if (isLoading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><CircularProgress /></Box>;
+  }
+
+  if (isError) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">Erro ao carregar dados do dashboard. Tente recarregar a página.</Alert>
+      </Box>
+    );
   }
 
   return (
@@ -115,7 +118,14 @@ export function DashboardPage() {
             <List dense>
               {stats.upcomingOrders.map((order) => (
                 <ListItem key={order.id} button onClick={() => navigate('/calendar')} sx={{ borderBottom: '1px solid rgba(0,0,0,0.05)', '&:last-child': { borderBottom: 'none' } }}>
-                  <ListItemText primary={<Typography variant="subtitle2"><b>Pedido #{order.id}</b> - {order.client?.name || 'Cliente Balcão'}</Typography>} secondary={`Entrega: ${new Date(order.deliveryDate).toLocaleString('pt-BR')}`} />
+                  <ListItemText 
+                    primary={
+                      <Typography variant="subtitle2">
+                        <b>Pedido #{order.id}</b> - {order.client?.name || 'Cliente Balcão'}
+                      </Typography>
+                    } 
+                    secondary={`Entrega: ${new Date(order.deliveryDate).toLocaleString('pt-BR')}`} 
+                  />
                   <Chip label="Pendente" color="warning" size="small" variant="outlined" />
                 </ListItem>
               ))}
@@ -136,12 +146,13 @@ export function DashboardPage() {
         Financeiro
       </Typography>
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <StatCard title="Faturamento" value={formatCurrency(stats?.revenueMonth || 0)} color="#16a34a" icon={<DollarSign size={20} strokeWidth={2} />} />
-        <StatCard title="Despesas" value={formatCurrency(stats?.expensesMonth || 0)} color="#dc2626" icon={<TrendingDown size={20} strokeWidth={2} />} />
+        {/* Adicionei Number() para garantir segurança caso venha string do backend */}
+        <StatCard title="Faturamento" value={formatCurrency(Number(stats?.revenueMonth || 0))} color="#16a34a" icon={<DollarSign size={20} strokeWidth={2} />} />
+        <StatCard title="Despesas" value={formatCurrency(Number(stats?.expensesMonth || 0))} color="#dc2626" icon={<TrendingDown size={20} strokeWidth={2} />} />
         <StatCard 
           title="Lucro Líquido" 
-          value={formatCurrency(stats?.netProfit || 0)} 
-          color={stats && stats.netProfit >= 0 ? "#00c7ce" : "#dc2626"} // Verde se positivo, Vermelho se negativo
+          value={formatCurrency(Number(stats?.netProfit || 0))} 
+          color={(stats?.netProfit || 0) >= 0 ? "#00c7ce" : "#dc2626"} 
           icon={<Wallet size={20} strokeWidth={2} />} 
         />
       </Grid>
@@ -213,7 +224,7 @@ export function DashboardPage() {
                       primaryTypographyProps={{ fontWeight: 500, color: '#333' }}
                     />
                     <Chip 
-                      label={`${product.value} un.`} 
+                      label={`${Number(product.value)} un.`} // Conversão de segurança
                       size="small" 
                       sx={{ fontWeight: 'bold', bgcolor: '#f0fdf4', color: '#166534', borderRadius: 1.5 }} 
                     />
@@ -227,7 +238,7 @@ export function DashboardPage() {
             </List>
           </Paper>
 
-          {/* O NOVO MURAL DE AVISOS */}
+          {/* MURAL DE AVISOS */}
           <Box sx={{ height: 400 }}>
             <NoticeBoard />
           </Box>
